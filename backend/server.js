@@ -305,10 +305,14 @@ app.get('/api/admin/students', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`=================================`);
-  console.log(`🚀 Joineazy Server running on port ${PORT}`);
-  console.log(`🔒 JWT Authentication & Security active`);
-  console.log(`=================================`);
-});
+// Export Express App for Vercel Serverless Function & local start
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`=================================`);
+    console.log(`🚀 Joineazy Server running on port ${PORT}`);
+    console.log(`🔒 JWT Authentication & Security active`);
+    console.log(`=================================`);
+  });
+}
+
+module.exports = app;
