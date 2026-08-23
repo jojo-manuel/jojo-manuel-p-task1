@@ -1,2 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Vercel & IDE
 .vercel
-.env*
+.ds_store
