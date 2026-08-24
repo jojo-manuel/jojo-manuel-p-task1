@@ -939,6 +939,10 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
       return res.status(400).json({ message: 'Assignment title is required' });
     }
 
+    if (dueDate && new Date(dueDate).getTime() < Date.now() - 60000) {
+      return res.status(400).json({ message: 'Assignment due date cannot be set in the past' });
+    }
+
     const groupIdsJson = JSON.stringify(assignedGroupIds || []);
     const result = await db.query(
       'INSERT INTO assignments (title, description, due_date, onedrive_link, assigned_to_type, assigned_group_ids, created_by, question_paper_url, question_paper_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
@@ -1005,7 +1009,7 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
   }
 });
 
-// 19. Get Assignments Endpoint (Role Aware)
+// 19. Get Assignments Endpoint (Role Aware with Teacher Name)
 app.get('/api/assignments', authenticateToken, async (req, res) => {
   try {
     const allAssignmentsRes = await db.query('SELECT * FROM assignments ORDER BY created_at DESC');
@@ -1035,6 +1039,10 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
       assignments
         .filter((asgn) => isAssignedToStudent(asgn, userGroupIds))
         .map(async (asgn) => {
+          const teacherRes = await db.query('SELECT name, email FROM users WHERE id = $1', [asgn.created_by]);
+          const teacher = teacherRes.rows[0] || {};
+          const teacherName = teacher.name || teacher.email || 'Faculty Member';
+
           const subRes = await db.query(
             'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(student_id AS TEXT) = CAST($2 AS TEXT)',
             [asgn.id, req.user.id]
@@ -1058,6 +1066,7 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
 
           return {
             ...asgn,
+            teacher_name: teacherName,
             isSubmitted: Boolean(userSub),
             submission: userSub,
             groupProgress
@@ -1086,6 +1095,10 @@ app.put('/api/assignments/:id', authenticateToken, requireAdmin, async (req, res
       questionPaperUrl,
       questionPaperName
     } = req.body;
+
+    if (dueDate && new Date(dueDate).getTime() < Date.now() - 60000) {
+      return res.status(400).json({ message: 'Assignment due date cannot be set in the past' });
+    }
 
     const groupIdsJson = JSON.stringify(assignedGroupIds || []);
     const existing = await findAssignmentById(id);

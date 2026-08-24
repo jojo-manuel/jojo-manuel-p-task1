@@ -202,6 +202,11 @@ export default function AdminDashboard({ token }) {
     e.preventDefault();
     if (!title.trim()) return;
 
+    if (dueDate && new Date(dueDate).getTime() < Date.now() - 60000) {
+      setModalError('Assignment due date cannot be set in the past');
+      return;
+    }
+
     setSavingAsgn(true);
     setModalError(null);
     try {
@@ -680,6 +685,19 @@ export default function AdminDashboard({ token }) {
                           {sub.assignment_title && (
                             <p className="text-xs font-semibold text-slate-700">
                               Assignment: "{sub.assignment_title}"
+                            </p>
+                          )}
+
+                          {sub.submitted_at && (
+                            <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              Submitted on: {new Date(sub.submitted_at).toLocaleString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </p>
                           )}
 
