@@ -7,7 +7,7 @@ require('dotenv').config();
 const db = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'joineazy_super_secret_jwt_key_2026';
 
 // Middleware
@@ -62,17 +62,150 @@ function requireAdmin(req, res, next) {
 }
 
 // Helper to format user response (excluding password hash)
+function normalizeId(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const trimmed = String(value).trim();
+  if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+  return trimmed;
+}
+
+function idsMatch(a, b) {
+  return String(a) === String(b);
+}
+
+function readAssignmentIdFromRequest(req) {
+  const raw = req.params && req.params.id;
+  const fromParams = Array.isArray(raw) ? raw[0] : raw;
+  const path = String(req.path || req.url || '').split('?')[0];
+  const match = path.match(/\/assignments\/([^/]+)/);
+  const fromPath = match ? decodeURIComponent(match[1]) : null;
+  const chosen =
+    fromPath && (!fromParams || String(fromPath).length >= String(fromParams).length)
+      ? fromPath
+      : fromParams;
+  return chosen == null ? '' : String(chosen).trim();
+}
+
+async function findAssignmentById(assignmentId) {
+  const id = assignmentId == null ? '' : String(assignmentId).trim();
+  if (!id) return null;
+  try {
+    const byId = await db.query(
+      'SELECT * FROM assignments WHERE CAST(id AS TEXT) = CAST($1 AS TEXT)',
+      [id]
+    );
+    if (byId.rows.length > 0) return byId.rows[0];
+  } catch (err) {
+    console.warn('Assignment lookup notice:', err.message);
+  }
+  const all = await db.query('SELECT * FROM assignments');
+  return all.rows.find((row) => idsMatch(row.id, id)) || null;
+}
+
+function parseAssignedGroupIds(value) {
+  if (!value) return [];
+  let parsed = value;
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed); } catch (e) { parsed = []; }
+  }
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed); } catch (e) { parsed = []; }
+  }
+  if (Array.isArray(parsed)) {
+    return parsed.map(normalizeId).filter((x) => x !== null);
+  }
+  return [];
+}
+
+function assignmentTargetType(asgn) {
+  const raw = asgn.assigned_to_type || asgn.assigned_to_type || asgn.target_type || 'all';
+  return String(raw).toLowerCase() === 'groups' ? 'groups' : 'all';
+}
+
+function isOwnedByFaculty(asgn, userId) {
+  return idsMatch(asgn.created_by, userId);
+}
+
+function isAssignedToStudent(asgn, studentGroupIds) {
+  if (assignmentTargetType(asgn) !== 'groups') return true;
+  const targetIds = parseAssignedGroupIds(asgn.assigned_group_ids);
+  if (targetIds.length === 0) return false;
+  return targetIds.some((gId) => studentGroupIds.some((u) => idsMatch(u, gId)));
+}
+
+async function getAcceptedGroupIds(userId) {
+  const res = await db.query(
+    `SELECT group_id FROM group_members
+     WHERE CAST(user_id AS TEXT) = CAST($1 AS TEXT)
+       AND (status = 'accepted' OR role = 'creator')`,
+    [userId]
+  );
+  return res.rows
+    .map((g) => normalizeId(g.group_id || g.id || g.groupId))
+    .filter((x) => x !== null);
+}
+
+async function buildGroupAssignmentProgress(assignmentId, groupId) {
+  const membersRes = await db.query(
+    `SELECT gm.*, u.name as user_name, u.email as user_email, u.roll_number
+     FROM group_members gm
+     JOIN users u ON CAST(gm.user_id AS TEXT) = CAST(u.id AS TEXT)
+     WHERE CAST(gm.group_id AS TEXT) = CAST($1 AS TEXT)`,
+    [groupId]
+  );
+  const members = membersRes.rows.filter((m) => m.status === 'accepted' || m.role === 'creator');
+  const memberIds = members.map((m) => String(m.user_id));
+  const subsRes = await db.query(
+    'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT)',
+    [assignmentId]
+  );
+  const submittedIds = new Set(
+    subsRes.rows
+      .filter((s) => memberIds.includes(String(s.student_id)))
+      .map((s) => String(s.student_id))
+  );
+
+  const memberProgress = members.map((m) => ({
+    id: m.user_id,
+    name: m.user_name || m.user_email,
+    email: m.user_email,
+    rollNumber: m.roll_number || null,
+    submitted: submittedIds.has(String(m.user_id))
+  }));
+  const submittedCount = memberProgress.filter((m) => m.submitted).length;
+  const memberCount = memberProgress.length;
+  const percent = memberCount > 0 ? Math.round((submittedCount / memberCount) * 100) : 0;
+
+  return {
+    groupId,
+    memberCount,
+    submittedCount,
+    percent,
+    complete: memberCount > 0 && submittedCount === memberCount,
+    members: memberProgress
+  };
+}
+
 function formatUserResponse(user) {
+  const rawRole = (user.role || 'student').toLowerCase();
+  const role = (rawRole === 'admin' || rawRole === 'professor' || rawRole === 'teacher') ? 'admin' : 'student';
+  const isTeacher = role === 'admin';
+  const empId = user.employee_id || user.employeeId || user.roll_number || user.rollNumber || user.student_id || null;
+  const isComplete = isTeacher
+    ? Boolean(user.name && empId && (user.phone_number || user.phone))
+    : Boolean(user.school && (user.class_name || user.class) && (user.roll_number || user.rollNumber || user.student_id) && user.name && (user.phone_number || user.phone));
+
   return {
     id: user.id,
     email: user.email,
-    role: user.role || 'student',
+    role,
     name: user.name || null,
     school: user.school || null,
     class: user.class_name || user.class || null,
-    rollNumber: user.roll_number || user.rollNumber || null,
+    rollNumber: user.roll_number || user.rollNumber || user.student_id || null,
+    employeeId: empId,
     phone: user.phone_number || user.phone || null,
-    isProfileComplete: Boolean(user.school && user.class_name && user.roll_number && user.name && user.phone_number),
+    isProfileComplete: isComplete,
     createdAt: user.created_at
   };
 }
@@ -293,8 +426,45 @@ app.put('/api/student/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// 7b. Update Teacher Profile Endpoint (Name, Employee ID, Phone, Department)
+app.put('/api/teacher/profile', authenticateToken, async (req, res) => {
+  try {
+    const { name, employeeId, phone, school } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Full name is required' });
+    }
+    if (!employeeId || !employeeId.trim()) {
+      return res.status(400).json({ message: 'Employee ID is required' });
+    }
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+    const updateResult = await db.query(
+      'UPDATE users SET name = $1, roll_number = $2, phone_number = $3, school = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING *',
+      [name.trim(), employeeId.trim(), cleanPhone, school ? school.trim() : 'Joineazy Institute', req.user.id]
+    );
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Teacher account not found' });
+    }
+
+    const updatedUser = updateResult.rows[0];
+
+    res.json({
+      message: 'Teacher profile details updated successfully!',
+      user: formatUserResponse(updatedUser)
+    });
+  } catch (error) {
+    console.error('Update Teacher Profile Error:', error);
+    res.status(500).json({ message: 'Failed to update teacher profile' });
+  }
+});
+
 // 8. Admin: Get All Students Endpoint
-app.get('/api/admin/students', authenticateToken, requireAdmin, async (req, res) => {
+app.get(['/api/admin/students', '/api/admin/students'], authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await db.query("SELECT * FROM users WHERE role = 'student' ORDER BY id DESC");
     const students = result.rows.map(formatUserResponse);
@@ -302,6 +472,773 @@ app.get('/api/admin/students', authenticateToken, requireAdmin, async (req, res)
   } catch (error) {
     console.error('Admin Fetch Error:', error);
     res.status(500).json({ message: 'Failed to fetch student directory' });
+  }
+});
+
+// 9. Search Students Endpoint (Search by Roll Number, Name, Email)
+app.get('/api/students/search', authenticateToken, async (req, res) => {
+  try {
+    const q = req.query.q ? req.query.q.trim() : '';
+    if (!q) {
+      return res.json({ students: [] });
+    }
+    const searchPattern = `%${q}%`;
+    const result = await db.query(
+      "SELECT * FROM users WHERE role = 'student' AND (roll_number ILIKE $1 OR name ILIKE $1 OR email ILIKE $1)",
+      [searchPattern]
+    );
+    const students = result.rows.map(formatUserResponse);
+    res.json({ students });
+  } catch (error) {
+    console.error('Search Students Error:', error);
+    res.status(500).json({ message: 'Failed to search students' });
+  }
+});
+
+// 10. Create Group Endpoint
+app.post('/api/groups', authenticateToken, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Group name is required' });
+    }
+
+    const groupResult = await db.query(
+      'INSERT INTO groups (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
+      [name.trim(), description ? description.trim() : '', req.user.id]
+    );
+    const group = groupResult.rows[0];
+
+    // Add creator as group member
+    await db.query(
+      'INSERT INTO group_members (group_id, user_id, role, status) VALUES ($1, $2, $3, $4) RETURNING *',
+      [group.id, req.user.id, 'creator', 'accepted']
+    );
+
+    res.status(201).json({
+      message: 'Group created successfully!',
+      group
+    });
+  } catch (error) {
+    console.error('Create Group Error:', error);
+    res.status(500).json({ message: 'Failed to create group' });
+  }
+});
+
+// 11. Get My Groups Endpoint
+app.get('/api/groups', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT g.*, gm.role as user_role, gm.status as user_status 
+       FROM groups g 
+       JOIN group_members gm ON g.id = gm.group_id 
+       WHERE gm.user_id = $1 
+       ORDER BY g.created_at DESC`,
+      [req.user.id]
+    );
+
+    const groups = await Promise.all(
+      result.rows.map(async (group) => {
+        const membersResult = await db.query(
+          `SELECT gm.*, u.name as user_name, u.email as user_email, u.roll_number, u.school, u.class_name 
+           FROM group_members gm 
+           JOIN users u ON gm.user_id = u.id 
+           WHERE gm.group_id = $1`,
+          [group.id]
+        );
+
+        let progressSummary = { overallPercent: 0, completeCount: 0, assignmentCount: 0 };
+        try {
+          const allAsgnRes = await db.query('SELECT * FROM assignments ORDER BY created_at DESC');
+          const relevant = allAsgnRes.rows.filter((asgn) => {
+            if (asgn.assigned_to_type !== 'groups') return true;
+            const ids = parseAssignedGroupIds(asgn.assigned_group_ids);
+            return ids.some((id) => idsMatch(id, group.id));
+          });
+          let memberSlots = 0;
+          let submittedSlots = 0;
+          let completeCount = 0;
+          for (const asgn of relevant) {
+            const progress = await buildGroupAssignmentProgress(asgn.id, group.id);
+            memberSlots += progress.memberCount;
+            submittedSlots += progress.submittedCount;
+            if (progress.complete) completeCount += 1;
+          }
+          progressSummary = {
+            overallPercent: memberSlots > 0 ? Math.round((submittedSlots / memberSlots) * 100) : 0,
+            completeCount,
+            assignmentCount: relevant.length
+          };
+        } catch (progressErr) {
+          console.warn('Group list progress note:', progressErr.message);
+        }
+
+        return {
+          ...group,
+          members: membersResult.rows,
+          progress: progressSummary
+        };
+      })
+    );
+
+    res.json({ groups });
+  } catch (error) {
+    console.error('Get Groups Error:', error);
+    res.status(500).json({ message: 'Failed to fetch groups' });
+  }
+});
+
+// 12b. Group assignment progress (visual tracker for student groups)
+app.get('/api/groups/:id/progress', authenticateToken, async (req, res) => {
+  try {
+    const groupId = String(req.params.id);
+    const groupResult = await db.query('SELECT * FROM groups WHERE id = $1', [groupId]);
+    if (groupResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const memberCheck = await db.query(
+      'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, req.user.id]
+    );
+    if (memberCheck.rows.length === 0 && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'You are not a member of this group' });
+    }
+
+    const allAsgnRes = await db.query('SELECT * FROM assignments ORDER BY created_at DESC');
+    const relevant = allAsgnRes.rows.filter((asgn) => {
+      if (asgn.assigned_to_type !== 'groups') return true;
+      const ids = parseAssignedGroupIds(asgn.assigned_group_ids);
+      return ids.some((id) => idsMatch(id, groupId));
+    });
+
+    const assignments = [];
+    for (const asgn of relevant) {
+      const progress = await buildGroupAssignmentProgress(asgn.id, groupId);
+      assignments.push({
+        id: asgn.id,
+        title: asgn.title,
+        due_date: asgn.due_date,
+        onedrive_link: asgn.onedrive_link,
+        ...progress
+      });
+    }
+
+    const totals = assignments.reduce(
+      (acc, item) => {
+        acc.memberSlots += item.memberCount;
+        acc.submittedSlots += item.submittedCount;
+        return acc;
+      },
+      { memberSlots: 0, submittedSlots: 0 }
+    );
+    const overallPercent = totals.memberSlots > 0
+      ? Math.round((totals.submittedSlots / totals.memberSlots) * 100)
+      : 0;
+
+    res.json({
+      group: groupResult.rows[0],
+      overallPercent,
+      completeCount: assignments.filter((a) => a.complete).length,
+      assignmentCount: assignments.length,
+      assignments
+    });
+  } catch (error) {
+    console.error('Group Progress Error:', error);
+    res.status(500).json({ message: 'Failed to fetch group progress' });
+  }
+});
+
+// 12. Get Group Details Endpoint
+app.get('/api/groups/:id', authenticateToken, async (req, res) => {
+  try {
+    const groupId = String(req.params.id);
+    const groupResult = await db.query('SELECT * FROM groups WHERE id = $1', [groupId]);
+    if (groupResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const group = groupResult.rows[0];
+
+    const membersResult = await db.query(
+      `SELECT gm.*, u.name as user_name, u.email as user_email, u.roll_number, u.school, u.class_name 
+       FROM group_members gm 
+       JOIN users u ON gm.user_id = u.id 
+       WHERE gm.group_id = $1`,
+      [groupId]
+    );
+
+    res.json({
+      group: {
+        ...group,
+        members: membersResult.rows
+      }
+    });
+  } catch (error) {
+    console.error('Get Group Details Error:', error);
+    res.status(500).json({ message: 'Failed to fetch group details' });
+  }
+});
+
+// 13. Invite Student to Group Endpoint (via Email or User ID)
+app.post('/api/groups/:id/invite', authenticateToken, async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const { email, userId, studentId, rollNumber, inviteeEmail, inviteeId } = req.body;
+    const targetEmail = (email || inviteeEmail || '').trim();
+    const targetUserId = userId || inviteeId;
+    const targetStudentId = (studentId || rollNumber || '').toString().trim();
+
+    if (!targetEmail && !targetUserId && !targetStudentId) {
+      return res.status(400).json({ message: 'Student email or student ID (roll number / user ID) is required to invite a member' });
+    }
+
+    const groupResult = await db.query('SELECT * FROM groups WHERE id = $1', [groupId]);
+    if (groupResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+    const group = groupResult.rows[0];
+
+    // Find student by email, numeric user ID, or roll number / student ID
+    let userResult = { rows: [] };
+    if (targetEmail && targetEmail.includes('@')) {
+      userResult = await db.query('SELECT * FROM users WHERE email = $1', [targetEmail.toLowerCase()]);
+    }
+    if (userResult.rows.length === 0 && (targetUserId || /^\d+$/.test(targetStudentId))) {
+      const numericId = parseInt(targetUserId || targetStudentId, 10);
+      if (!Number.isNaN(numericId)) {
+        userResult = await db.query('SELECT * FROM users WHERE id = $1', [numericId]);
+      }
+    }
+    if (userResult.rows.length === 0 && targetStudentId) {
+      userResult = await db.query(
+        "SELECT * FROM users WHERE role = 'student' AND (roll_number ILIKE $1 OR email ILIKE $1)",
+        [`%${targetStudentId}%`]
+      );
+    }
+    if (userResult.rows.length === 0 && targetEmail) {
+      userResult = await db.query(
+        "SELECT * FROM users WHERE role = 'student' AND (email ILIKE $1 OR roll_number ILIKE $1)",
+        [`%${targetEmail}%`]
+      );
+    }
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Student with the provided email or ID was not found' });
+    }
+    const targetUser = userResult.rows[0];
+
+    if (targetUser.id === req.user.id) {
+      return res.status(400).json({ message: 'You are already in this group as creator' });
+    }
+
+    // Check existing membership
+    const memberResult = await db.query(
+      'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, targetUser.id]
+    );
+
+    if (memberResult.rows.length > 0) {
+      const status = memberResult.rows[0].status;
+      if (status === 'accepted') {
+        return res.status(400).json({ message: `${targetUser.name || targetUser.email} is already a member of this group` });
+      }
+      if (status === 'pending') {
+        return res.status(400).json({ message: `Invitation is already pending for ${targetUser.name || targetUser.email}` });
+      }
+      await db.query(
+        "UPDATE group_members SET status = $1 WHERE group_id = $2 AND user_id = $3",
+        ['pending', groupId, targetUser.id]
+      );
+    } else {
+      await db.query(
+        'INSERT INTO group_members (group_id, user_id, role, status) VALUES ($1, $2, $3, $4)',
+        [groupId, targetUser.id, 'member', 'pending']
+      );
+    }
+
+    // Get inviter details
+    const inviterResult = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const inviter = inviterResult.rows[0] || {};
+    const inviterName = inviter.name || inviter.email;
+
+    // Send in-app notification to target user
+    await db.query(
+      'INSERT INTO notifications (user_id, sender_id, group_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      [
+        targetUser.id,
+        req.user.id,
+        groupId,
+        'group_invite',
+        'Group Invitation',
+        `${inviterName} invited you to join "${group.name}".`,
+        'unread',
+        'pending'
+      ]
+    );
+
+    res.json({
+      message: `Invitation sent to ${targetUser.name || targetUser.email}! An in-app notification has been dispatched.`,
+      invitedUser: formatUserResponse(targetUser)
+    });
+  } catch (error) {
+    console.error('Invite Student Error:', error);
+    res.status(500).json({ message: 'Failed to send group invitation' });
+  }
+});
+
+// 14. Get Notifications Endpoint
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT n.*, u.name as sender_name, u.email as sender_email, g.name as group_name
+       FROM notifications n
+       LEFT JOIN users u ON CAST(n.sender_id AS TEXT) = CAST(u.id AS TEXT)
+       LEFT JOIN groups g ON CAST(n.group_id AS TEXT) = CAST(g.id AS TEXT)
+       WHERE CAST(n.user_id AS TEXT) = CAST($1 AS TEXT)
+       ORDER BY n.created_at DESC`,
+      [req.user.id]
+    );
+
+    const unreadCount = result.rows.filter(n => n.status === 'unread').length;
+
+    res.json({
+      notifications: result.rows,
+      unreadCount
+    });
+  } catch (error) {
+    console.error('Get Notifications Error:', error);
+    res.status(500).json({ message: 'Failed to fetch notifications' });
+  }
+});
+
+// 15. Mark All Notifications Read Endpoint
+app.put('/api/notifications/read-all', authenticateToken, async (req, res) => {
+  try {
+    await db.query("UPDATE notifications SET status = 'read' WHERE user_id = $1", [req.user.id]);
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Mark Read All Error:', error);
+    res.status(500).json({ message: 'Failed to update notifications' });
+  }
+});
+
+// 16. Mark Single Notification Read Endpoint
+app.put('/api/notifications/:id/read', authenticateToken, async (req, res) => {
+  try {
+    const notifId = parseInt(req.params.id, 10);
+    await db.query("UPDATE notifications SET status = 'read' WHERE id = $1 AND user_id = $2", [notifId, req.user.id]);
+    res.json({ message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Mark Read Error:', error);
+    res.status(500).json({ message: 'Failed to update notification' });
+  }
+});
+
+// 17. Respond to Group Invitation Endpoint (Accept / Decline)
+app.post('/api/notifications/:id/respond', authenticateToken, async (req, res) => {
+  try {
+    const notifId = parseInt(req.params.id, 10);
+    const { action } = req.body; // 'accept' or 'reject'
+
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ message: 'Action must be accept or reject' });
+    }
+
+    const notifResult = await db.query('SELECT * FROM notifications WHERE id = $1 AND user_id = $2', [notifId, req.user.id]);
+    if (notifResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    const notification = notifResult.rows[0];
+    if (notification.type !== 'group_invite') {
+      return res.status(400).json({ message: 'This notification is not a group invitation' });
+    }
+
+    const groupId = notification.group_id;
+    const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+
+    // Update group member status
+    await db.query(
+      'UPDATE group_members SET status = $1 WHERE group_id = $2 AND user_id = $3',
+      [newStatus, groupId, req.user.id]
+    );
+
+    // Update notification status
+    await db.query(
+      'UPDATE notifications SET invitation_status = $1, status = $2 WHERE id = $3',
+      [newStatus, 'read', notifId]
+    );
+
+    // Notify original sender (group creator/inviter)
+    const userResult = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const groupResult = await db.query('SELECT * FROM groups WHERE id = $1', [groupId]);
+
+    const student = userResult.rows[0] || {};
+    const group = groupResult.rows[0] || {};
+    const studentName = student.name || student.email;
+
+    if (notification.sender_id) {
+      await db.query(
+        'INSERT INTO notifications (user_id, sender_id, group_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [
+          notification.sender_id,
+          req.user.id,
+          groupId,
+          'invite_response',
+          `Invitation ${action === 'accept' ? 'Accepted' : 'Declined'}`,
+          `${studentName} has ${action === 'accept' ? 'accepted' : 'declined'} your invitation to join "${group.name || 'the group'}".`,
+          'unread',
+          'none'
+        ]
+      );
+    }
+
+    res.json({
+      message: action === 'accept' ? 'Group invitation accepted!' : 'Group invitation declined.',
+      invitation_status: newStatus
+    });
+  } catch (error) {
+    console.error('Respond Invitation Error:', error);
+    res.status(500).json({ message: 'Failed to process invitation response' });
+  }
+});
+
+// 18. Professor/Admin: Create Assignment Endpoint
+app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { title, description, dueDate, onedriveLink, assignedToType, assignedGroupIds } = req.body;
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ message: 'Assignment title is required' });
+    }
+
+    const groupIdsJson = JSON.stringify(assignedGroupIds || []);
+    const result = await db.query(
+      'INSERT INTO assignments (title, description, due_date, onedrive_link, assigned_to_type, assigned_group_ids, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [
+        title.trim(),
+        description ? description.trim() : '',
+        dueDate || null,
+        onedriveLink ? onedriveLink.trim() : null,
+        assignedToType === 'groups' ? 'groups' : 'all',
+        groupIdsJson,
+        req.user.id
+      ]
+    );
+
+    const newAssignment = result.rows[0];
+
+    // Notify target students
+    try {
+      let targetUserIds = [];
+      if (assignedToType === 'groups' && Array.isArray(assignedGroupIds) && assignedGroupIds.length > 0) {
+        for (const gId of assignedGroupIds) {
+          const membersRes = await db.query(
+            `SELECT user_id FROM group_members
+             WHERE CAST(group_id AS TEXT) = CAST($1 AS TEXT)
+               AND (status = 'accepted' OR role = 'creator')`,
+            [gId]
+          );
+          membersRes.rows.forEach((m) => {
+            if (!targetUserIds.some((id) => idsMatch(id, m.user_id))) targetUserIds.push(m.user_id);
+          });
+        }
+      } else {
+        const studentsRes = await db.query("SELECT id FROM users WHERE role = 'student'");
+        targetUserIds = studentsRes.rows.map(s => s.id);
+      }
+
+      for (const uid of targetUserIds) {
+        await db.query(
+          'INSERT INTO notifications (user_id, sender_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [
+            uid,
+            req.user.id,
+            'assignment_notice',
+            'New Coursework Assignment',
+            `Professor posted a new assignment: "${newAssignment.title}". Check Coursework section.`,
+            'unread',
+            'none'
+          ]
+        );
+      }
+    } catch (notifErr) {
+      console.error('Error sending assignment notifications:', notifErr);
+    }
+
+    res.status(201).json({
+      message: 'Assignment created and published successfully!',
+      assignment: newAssignment
+    });
+  } catch (error) {
+    console.error('Create Assignment Error:', error);
+    res.status(500).json({ message: 'Failed to create assignment' });
+  }
+});
+
+// 19. Get Assignments Endpoint (Role Aware)
+app.get('/api/assignments', authenticateToken, async (req, res) => {
+  try {
+    const allAssignmentsRes = await db.query('SELECT * FROM assignments ORDER BY created_at DESC');
+    const assignments = allAssignmentsRes.rows;
+
+    if (req.user.role === 'admin') {
+      const mine = assignments.filter((asgn) => isOwnedByFaculty(asgn, req.user.id));
+      const result = await Promise.all(
+        mine.map(async (asgn) => {
+          const subsRes = await db.query(
+            'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT)',
+            [asgn.id]
+          );
+          return {
+            ...asgn,
+            submissionCount: subsRes.rows.length,
+            submissions: subsRes.rows
+          };
+        })
+      );
+      return res.json({ assignments: result });
+    }
+
+    const userGroupIds = await getAcceptedGroupIds(req.user.id);
+
+    const filteredAssignments = await Promise.all(
+      assignments
+        .filter((asgn) => isAssignedToStudent(asgn, userGroupIds))
+        .map(async (asgn) => {
+          const subRes = await db.query(
+            'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(student_id AS TEXT) = CAST($2 AS TEXT)',
+            [asgn.id, req.user.id]
+          );
+          const userSub = subRes.rows[0] || null;
+
+          const assignedIds = parseAssignedGroupIds(asgn.assigned_group_ids);
+          const progressGroupIds = asgn.assigned_to_type === 'groups'
+            ? assignedIds.filter((gId) => userGroupIds.some((u) => idsMatch(u, gId)))
+            : userGroupIds;
+
+          const groupProgress = [];
+          for (const gId of progressGroupIds) {
+            const progress = await buildGroupAssignmentProgress(asgn.id, gId);
+            const groupRow = await db.query('SELECT * FROM groups WHERE id = $1', [gId]);
+            groupProgress.push({
+              ...progress,
+              groupName: groupRow.rows[0] ? groupRow.rows[0].name : `Group #${gId}`
+            });
+          }
+
+          return {
+            ...asgn,
+            isSubmitted: Boolean(userSub),
+            submission: userSub,
+            groupProgress
+          };
+        })
+    );
+
+    res.json({ assignments: filteredAssignments });
+  } catch (error) {
+    console.error('Get Assignments Error:', error);
+    res.status(500).json({ message: 'Failed to fetch assignments' });
+  }
+});
+
+// 20. Edit Assignment Endpoint (Admin/Professor)
+app.put('/api/assignments/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { title, description, dueDate, onedriveLink, assignedToType, assignedGroupIds } = req.body;
+
+    const groupIdsJson = JSON.stringify(assignedGroupIds || []);
+    const existing = await findAssignmentById(id);
+    if (!existing) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+    if (!isOwnedByFaculty(existing, req.user.id)) {
+      return res.status(403).json({ message: 'You can only edit assignments you created' });
+    }
+
+    const result = await db.query(
+      `UPDATE assignments
+       SET title = $1, description = $2, due_date = $3, onedrive_link = $4, assigned_to_type = $5, assigned_group_ids = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE CAST(id AS TEXT) = CAST($7 AS TEXT) RETURNING *`,
+      [
+        title ? title.trim() : '',
+        description ? description.trim() : '',
+        dueDate || null,
+        onedriveLink ? onedriveLink.trim() : null,
+        assignedToType === 'groups' ? 'groups' : 'all',
+        groupIdsJson,
+        existing.id
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    res.json({
+      message: 'Assignment updated successfully!',
+      assignment: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Edit Assignment Error:', error);
+    res.status(500).json({ message: 'Failed to update assignment' });
+  }
+});
+
+// 21. Delete Assignment Endpoint (Admin/Professor)
+app.delete('/api/assignments/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const existing = await findAssignmentById(id);
+    if (!existing) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+    if (!isOwnedByFaculty(existing, req.user.id)) {
+      return res.status(403).json({ message: 'You can only delete assignments you created' });
+    }
+    await db.query('DELETE FROM assignments WHERE CAST(id AS TEXT) = CAST($1 AS TEXT)', [existing.id]);
+    res.json({ message: 'Assignment deleted successfully' });
+  } catch (error) {
+    console.error('Delete Assignment Error:', error);
+    res.status(500).json({ message: 'Failed to delete assignment' });
+  }
+});
+
+// 22. Submit / Confirm Assignment Completion Endpoint (Student)
+app.post('/api/assignments/:id/submit', authenticateToken, async (req, res) => {
+  try {
+    const assignmentId = readAssignmentIdFromRequest(req);
+    const body = req.body || {};
+
+    const assignment = await findAssignmentById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    if (req.user.role !== 'admin') {
+      const studentGroupIds = await getAcceptedGroupIds(req.user.id);
+      if (!isAssignedToStudent(assignment, studentGroupIds)) {
+        return res.status(403).json({ message: 'This assignment was not given to you' });
+      }
+    }
+
+    const resolvedId = assignment.id;
+    const linkValue = String(body.submissionLink || body.submissionLink || '').trim() || null;
+    const notesValue = String(body.submissionNotes || body.submissionNotes || '').trim() || null;
+    const resolvedGroupId = body.groupId || null;
+
+    const existingSub = await db.query(
+      'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(student_id AS TEXT) = CAST($2 AS TEXT)',
+      [resolvedId, req.user.id]
+    );
+
+    let submission;
+
+    if (existingSub.rows.length > 0) {
+      const upd = await db.query(
+        `UPDATE assignment_submissions
+         SET group_id = $1, status = $2, submission_link = $3, submission_notes = $4, submitted_at = CURRENT_TIMESTAMP
+         WHERE CAST(assignment_id AS TEXT) = CAST($5 AS TEXT) AND CAST(student_id AS TEXT) = CAST($6 AS TEXT) RETURNING *`,
+        [resolvedGroupId || existingSub.rows[0].group_id, 'confirmed', linkValue, notesValue, resolvedId, req.user.id]
+      );
+      submission = upd.rows[0];
+    } else {
+      const subRes = await db.query(
+        'INSERT INTO assignment_submissions (assignment_id, student_id, group_id, status, submission_link, submission_notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [resolvedId, req.user.id, resolvedGroupId, 'confirmed', linkValue, notesValue]
+      );
+      submission = subRes.rows[0];
+    }
+
+    // Notify Professor
+    const studentRes = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const student = studentRes.rows[0] || {};
+
+    try {
+      await db.query(
+        'INSERT INTO notifications (user_id, sender_id, group_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [
+          assignment.created_by,
+          req.user.id,
+          resolvedGroupId,
+          'submission_notice',
+          'Work Submitted',
+          `${student.name || student.email} confirmed completion for "${assignment.title}".`,
+          'unread',
+          'none'
+        ]
+      );
+    } catch (notifyErr) {
+      console.warn('Submission saved, but professor notification failed:', notifyErr.message);
+    }
+
+    res.json({
+      message: 'Work submitted and confirmed successfully!',
+      submission
+    });
+  } catch (error) {
+    console.error('Submit Assignment Error:', error);
+    res.status(500).json({ message: 'Failed to submit assignment' });
+  }
+});
+
+// 23. Admin / Professor Analytics Endpoint
+app.get(['/api/admin/analytics', '/api/admin/analytics'], authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const studentsRes = await db.query("SELECT * FROM users WHERE role = 'student'");
+    const students = studentsRes.rows;
+
+    const groupsRes = await db.query('SELECT * FROM groups');
+    const groups = groupsRes.rows;
+
+    const asgnsRes = await db.query('SELECT * FROM assignments');
+    const assignments = asgnsRes.rows.filter((asgn) => isOwnedByFaculty(asgn, req.user.id));
+
+    const subsRes = await db.query('SELECT * FROM assignment_submissions');
+    const myAssignmentIds = new Set(assignments.map((a) => String(a.id)));
+    const submissions = subsRes.rows.filter((s) => myAssignmentIds.has(String(s.assignment_id)));
+
+    // Calculate group performance breakdown
+    const groupPerformance = await Promise.all(
+      groups.map(async (group) => {
+        const membersRes = await db.query('SELECT * FROM group_members WHERE group_id = $1 AND status = \'accepted\'', [group.id]);
+        const memberCount = membersRes.rows.length;
+        const groupSubmissions = submissions.filter(s => s.group_id === group.id);
+        
+        return {
+          id: group.id,
+          name: group.name,
+          memberCount,
+          submissionCount: groupSubmissions.length,
+          completionRate: memberCount > 0 && assignments.length > 0
+            ? Math.round((groupSubmissions.length / (memberCount * assignments.length)) * 100)
+            : (groupSubmissions.length > 0 ? 100 : 0)
+        };
+      })
+    );
+
+    const totalExpectedSubmissions = students.length * assignments.length;
+    const overallCompletionRate = totalExpectedSubmissions > 0
+      ? Math.round((submissions.length / totalExpectedSubmissions) * 100)
+      : (submissions.length > 0 ? 100 : 0);
+
+    res.json({
+      summary: {
+        totalStudents: students.length,
+        totalGroups: groups.length,
+        totalAssignments: assignments.length,
+        totalSubmissions: submissions.length,
+        overallCompletionRate
+      },
+      groupPerformance,
+      recentSubmissions: submissions.slice(0, 15)
+    });
+  } catch (error) {
+    console.error('Fetch Analytics Error:', error);
+    res.status(500).json({ message: 'Failed to fetch analytics' });
   }
 });
 

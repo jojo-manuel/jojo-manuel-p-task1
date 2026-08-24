@@ -20,17 +20,17 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto my-8 animate-fade-in text-slate-800">
-      <div className="classic-card rounded-3xl p-6 sm:p-10 relative bg-white">
+    <div className="w-full max-w-xl mx-auto my-4 sm:my-8 animate-fade-in text-slate-800">
+      <div className="classic-card rounded-2xl sm:rounded-3xl p-4 sm:p-10 relative bg-white">
         {/* Step Indicator */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-full bg-blue-700 text-white font-bold text-xs flex items-center justify-center">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-7 h-7 rounded-full bg-blue-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
               2
             </span>
-            <span className="text-xs font-bold text-blue-900">Step 2 of 2: Student Registration Details</span>
+            <span className="text-sm font-semibold text-slate-700">Step 2 of 2 · Student details</span>
           </div>
-          <span className="badge badge-student">
+          <span className="badge badge-student hidden sm:inline-flex">
             <Sparkles className="w-3 h-3 mr-1" /> Student Setup
           </span>
         </div>
@@ -38,8 +38,8 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
         {/* Header */}
         <div className="text-left mb-6">
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Complete Student Profile</h2>
-          <p className="text-xs text-slate-500">
-            Please fill in your academic information to finish setting up your account.
+          <p className="text-sm text-slate-500">
+            Add your school details so faculty can identify you.
           </p>
         </div>
 
@@ -160,7 +160,7 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
                 <span>Saving Details...</span>
               ) : (
                 <>
-                  <span>Save & Direct to Student Page</span>
+                  <span>Save and continue</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

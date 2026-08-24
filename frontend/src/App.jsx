@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import AuthTabs from './components/AuthTabs';
 import GoogleModal from './components/GoogleModal';
 import OnboardingForm from './components/OnboardingForm';
+import TeacherOnboardingForm from './components/TeacherOnboardingForm';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import './App.css';
@@ -18,6 +19,11 @@ function App() {
   const [googleRole, setGoogleRole] = useState('student');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
+  // Notification State
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
   // Restore user session on mount
   useEffect(() => {
     if (token) {
@@ -26,6 +32,32 @@ function App() {
       setInitialChecking(false);
     }
   }, [token]);
+
+  // Poll notifications for logged in student
+  useEffect(() => {
+    if (token && user && user.role === 'student') {
+      fetchNotifications(token);
+      const interval = setInterval(() => {
+        fetchNotifications(token);
+      }, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [token, user]);
+
+  const fetchNotifications = async (authToken) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.notifications) {
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
 
   const fetchUserProfile = async (authToken) => {
     try {
@@ -124,6 +156,33 @@ function App() {
     }
   };
 
+  const handleSaveTeacherDetails = async (details) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/teacher/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(details)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to save teacher details');
+      }
+
+      setUser(data.user);
+      setIsEditingProfile(false);
+      setSuccessMessage('Faculty details saved! Welcome to Teacher Portal.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveStudentDetails = async (details) => {
     setLoading(true);
     setError(null);
@@ -158,14 +217,17 @@ function App() {
     setIsEditingProfile(false);
     setError(null);
     setSuccessMessage(null);
+    setNotifications([]);
+    setUnreadCount(0);
+    setIsNotificationsOpen(false);
   };
 
   const renderCurrentView = () => {
     if (initialChecking) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-          <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4" />
-          <p className="text-xs text-slate-500 font-semibold">Loading Joineazy Academic Portal...</p>
+        <div className="flex flex-col items-center justify-center min-h-[55vh] gap-3">
+          <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-700 rounded-full animate-spin" />
+          <p className="text-sm text-slate-500 font-medium">Loading your portal…</p>
         </div>
       );
     }
@@ -186,8 +248,23 @@ function App() {
       );
     }
 
-    // Admin View
+    // Teacher / Admin View
     if (user.role === 'admin') {
+      const isTeacherComplete = Boolean(
+        user.name && (user.employeeId || user.rollNumber) && user.phone
+      );
+
+      if (!isTeacherComplete || isEditingProfile) {
+        return (
+          <TeacherOnboardingForm
+            user={user}
+            onSubmitDetails={handleSaveTeacherDetails}
+            loading={loading}
+            error={error}
+          />
+        );
+      }
+
       return <AdminDashboard token={token} />;
     }
 
@@ -211,16 +288,28 @@ function App() {
     return (
       <StudentDashboard
         user={user}
+        token={token}
+        notifications={notifications}
+        unreadNotificationsCount={unreadCount}
+        onRefreshNotifications={() => fetchNotifications(token)}
+        isNotificationsOpen={isNotificationsOpen}
+        onCloseNotifications={() => setIsNotificationsOpen(false)}
         onEditDetails={() => setIsEditingProfile(true)}
       />
     );
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col selection:bg-blue-600 selection:text-white font-sans">
-      <Navbar user={user} onLogout={handleLogout} />
+    <div className="app-shell selection:bg-blue-700 selection:text-white">
+      <Navbar
+        user={user}
+        onLogout={handleLogout}
+        unreadNotificationsCount={unreadCount}
+        onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
+        isNotificationsOpen={isNotificationsOpen}
+      />
 
-      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-7xl mx-auto w-full">
+      <main className={`flex-1 w-full max-w-6xl mx-auto min-w-0 ${user ? 'app-main-app' : 'app-main-auth'}`}>
         {renderCurrentView()}
       </main>
 
@@ -231,8 +320,8 @@ function App() {
         role={googleRole}
       />
 
-      <footer className="w-full py-4 text-center text-xs text-slate-500 border-t border-slate-200 bg-white">
-        <p>© 2026 Joineazy Academic Portal. High Security Student & School Portal.</p>
+      <footer className="app-footer">
+        <p>Joineazy Academic Portal · Secure access for students and faculty</p>
       </footer>
     </div>
   );

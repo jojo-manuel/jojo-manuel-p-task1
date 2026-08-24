@@ -15,3 +15,9 @@ coverage/
 # Vercel & IDE
 .vercel
 .ds_store
+
+# Temporary test scripts & fallback data
+backend/_inspect_*.js
+backend/test_*.js
+backend/data_fallback.json
+

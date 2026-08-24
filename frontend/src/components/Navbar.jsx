@@ -1,65 +1,80 @@
 import React from 'react';
-import { GraduationCap, LogOut, Shield, User, Sparkles } from 'lucide-react';
+import { GraduationCap, LogOut, Shield, Bell } from 'lucide-react';
 
-export default function Navbar({ user, onLogout, setActiveTab }) {
+export default function Navbar({
+  user,
+  onLogout,
+  unreadNotificationsCount = 0,
+  onToggleNotifications,
+  isNotificationsOpen
+}) {
+  const roleLabel = user?.role === 'admin' ? 'Faculty' : 'Student';
+
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-xs px-4 sm:px-8 py-3.5 flex items-center justify-between">
-      {/* Brand Logo */}
-      <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab && setActiveTab('home')}>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-700 via-indigo-700 to-blue-900 p-0.5 shadow-md shadow-blue-500/20 flex items-center justify-center">
-          <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
-            <GraduationCap className="w-6 h-6 text-blue-700" />
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 pt-[env(safe-area-inset-top)]">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0f2744] flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-none">Joineazy</p>
+            <p className="hidden xs:block sm:block text-xs text-slate-500 font-medium mt-0.5">Academic portal</p>
           </div>
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-extrabold tracking-tight text-slate-900 font-sans">
-              Joineazy
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-              Academic v2.0
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 font-medium text-left">Smart Student Portal</p>
-        </div>
-      </div>
 
-      {/* User Actions / Status */}
-      <div className="flex items-center gap-3 sm:gap-4">
-        {user ? (
-          <>
-            <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-blue-100 border border-blue-300 flex items-center justify-center text-blue-800 font-bold text-sm">
-                {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-              </div>
-              <div className="text-left text-xs">
-                <p className="font-bold text-slate-900 truncate max-w-[150px]">{user.name || user.email}</p>
-                <div className="flex items-center gap-1">
-                  <span className={`badge ${user.role === 'admin' ? 'badge-admin' : 'badge-student'} text-[9px] py-0 px-1.5`}>
-                    {user.role === 'admin' ? <Shield className="w-2.5 h-2.5 inline mr-0.5" /> : null}
-                    {user.role}
-                  </span>
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {user ? (
+            <>
+              {user.role === 'student' && onToggleNotifications && (
+                <button
+                  type="button"
+                  onClick={onToggleNotifications}
+                  aria-label="Notifications"
+                  className={`relative min-h-11 min-w-11 p-2.5 rounded-xl border transition-colors ${
+                    isNotificationsOpen
+                      ? 'bg-slate-900 border-slate-900 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Bell className="w-[18px] h-[18px]" />
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center border-2 border-white">
+                      {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 sm:gap-2.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-50 border border-slate-200 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#0f2744] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden sm:block text-left leading-tight min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate max-w-[140px] md:max-w-[180px]">
+                    {user.name || user.email}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                    {user.role === 'admin' && <Shield className="w-3 h-3" />}
+                    {roleLabel}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Logout Button */}
-            <button
-              onClick={onLogout}
-              className="btn-secondary text-xs sm:text-sm py-2 px-3.5 text-slate-700 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-600 font-semibold hidden sm:inline-flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" /> High Security Academic Portal
-            </span>
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={onLogout}
+                className="btn-secondary text-sm py-2 px-2.5 sm:px-3 min-h-11"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          ) : (
+            <p className="hidden sm:block text-sm text-slate-500">Students and faculty sign in here</p>
+          )}
+        </div>
       </div>
     </header>
   );

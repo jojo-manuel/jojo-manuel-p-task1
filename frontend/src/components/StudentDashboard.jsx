@@ -1,189 +1,193 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   GraduationCap,
   School,
   BookOpen,
-  Calendar,
   Award,
   Bell,
-  Edit3,
-  Clock,
-  ShieldCheck
+  Pencil,
+  Users,
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
+import StudentGroupManager from './StudentGroupManager';
+import NotificationCenter from './NotificationCenter';
+import StudentAssignmentsView from './StudentAssignmentsView';
 
-export default function StudentDashboard({ user, onEditDetails }) {
+export default function StudentDashboard({
+  user,
+  token,
+  notifications = [],
+  unreadNotificationsCount = 0,
+  onRefreshNotifications,
+  isNotificationsOpen,
+  onCloseNotifications,
+  onEditDetails
+}) {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const firstName = (user.name || 'Student').split(' ')[0];
+
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-6 animate-fade-in text-left text-slate-800">
-      {/* Student Welcome Banner */}
-      <div className="classic-card rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white relative overflow-hidden shadow-xl">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/15 backdrop-blur-md p-1 border border-white/20 shrink-0 flex items-center justify-center">
-              <div className="w-full h-full bg-white rounded-xl flex items-center justify-center text-blue-900 text-2xl font-extrabold shadow-inner">
-                {user.name ? user.name.charAt(0).toUpperCase() : 'S'}
-              </div>
+    <div className="w-full space-y-5 animate-fade-in text-left">
+      <section className="portal-hero p-4 sm:p-6 md:p-7">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white text-[#0f2744] flex items-center justify-center text-lg sm:text-xl font-extrabold shrink-0">
+              {(user.name || 'S').charAt(0).toUpperCase()}
             </div>
-
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap mb-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  Welcome back, {user.name || 'Student'}!
-                </h1>
-                <span className="badge bg-white/20 text-white border border-white/30 text-[10px]">
-                  <ShieldCheck className="w-3.5 h-3.5 mr-1 text-emerald-300" /> Verified Student
+            <div className="min-w-0">
+              <p className="text-blue-100 text-xs sm:text-sm font-medium mb-0.5">Student dashboard</p>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight truncate">Hello, {firstName}</h1>
+              <p className="text-xs sm:text-sm text-blue-100/90 mt-1 flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1">
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <School className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="truncate max-w-[180px] sm:max-w-none">{user.school || 'School not set'}</span>
                 </span>
-              </div>
-              <p className="text-xs sm:text-sm text-blue-100/90 flex items-center gap-2 flex-wrap font-medium">
-                <span className="flex items-center gap-1"><School className="w-4 h-4 text-blue-300" /> {user.school || 'School Not Set'}</span>
-                <span className="text-blue-300/40">•</span>
-                <span className="flex items-center gap-1"><BookOpen className="w-4 h-4 text-indigo-300" /> {user.class || 'Class N/A'}</span>
+                <span className="opacity-50 hidden sm:inline">·</span>
+                <span>Class {user.class || '—'}</span>
+                <span className="opacity-50">·</span>
+                <span>Roll #{user.rollNumber || '—'}</span>
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onEditDetails}
-              className="bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold text-xs py-2.5 px-4 rounded-xl transition-all flex items-center gap-2"
-            >
-              <Edit3 className="w-4 h-4 text-blue-200" /> Edit Details
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onEditDetails}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-semibold bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl px-4 py-2.5 min-h-11"
+          >
+            <Pencil className="w-4 h-4" /> Edit profile
+          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Main Student Page Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Student Identity Card */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="classic-card rounded-3xl p-6 relative shadow-md bg-white border border-slate-200">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <GraduationCap className="w-4.5 h-4.5 text-blue-700" /> Student Identity Card
-              </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                ACTIVE
-              </span>
-            </div>
+      <nav className="portal-tabs" aria-label="Student sections">
+        <button type="button" onClick={() => setActiveTab('overview')} className={`portal-tab ${activeTab === 'overview' ? 'is-active' : ''}`}>
+          <GraduationCap className="w-4 h-4" /> Home
+        </button>
+        <button type="button" onClick={() => setActiveTab('assignments')} className={`portal-tab ${activeTab === 'assignments' ? 'is-active' : ''}`}>
+          <BookOpen className="w-4 h-4" /> Coursework
+        </button>
+        <button type="button" onClick={() => setActiveTab('groups')} className={`portal-tab ${activeTab === 'groups' ? 'is-active' : ''}`}>
+          <Users className="w-4 h-4" /> Groups
+        </button>
+        <button type="button" onClick={() => setActiveTab('notifications')} className={`portal-tab ${activeTab === 'notifications' ? 'is-active' : ''}`}>
+          <Bell className="w-4 h-4" /> Inbox
+          {unreadNotificationsCount > 0 && <span className="count-chip">{unreadNotificationsCount}</span>}
+        </button>
+      </nav>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">Full Name</span>
-                <span className="font-extrabold text-slate-900 text-sm">{user.name || 'Not Provided'}</span>
+      {isNotificationsOpen && (
+        <NotificationCenter
+          notifications={notifications}
+          token={token}
+          onRefresh={onRefreshNotifications}
+          onClose={onCloseNotifications}
+        />
+      )}
+
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="space-y-5">
+            <div className="classic-card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-800">Your profile</h2>
+                <span className="badge badge-student">Active</span>
               </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">School Name</span>
-                <span className="font-bold text-slate-800 text-sm">{user.school || 'Not Provided'}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">Class / Grade</span>
-                  <span className="font-bold text-blue-700 text-sm">{user.class || 'N/A'}</span>
+              <dl className="space-y-3 text-sm">
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
+                  <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</dt>
+                  <dd className="font-semibold text-slate-900 mt-0.5">{user.name || '—'}</dd>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">Roll Number</span>
-                  <span className="font-bold text-blue-700 text-sm">#{user.rollNumber || 'N/A'}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">Phone Number</span>
-                <span className="font-semibold text-slate-800">{user.phone || 'N/A'}</span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <span className="text-slate-400 block text-[10px] uppercase tracking-wider font-bold">Registered Email</span>
-                <span className="font-semibold text-slate-800 truncate block">{user.email}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Performance Metrics */}
-          <div className="classic-card rounded-3xl p-6 space-y-4 bg-white border border-slate-200">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Academic Summary</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-100 text-center">
-                <Award className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-                <span className="text-xl font-extrabold text-blue-900 block">96.4%</span>
-                <span className="text-[11px] text-blue-700 font-semibold">Attendance</span>
-              </div>
-              <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-100 text-center">
-                <BookOpen className="w-6 h-6 text-indigo-600 mx-auto mb-1" />
-                <span className="text-xl font-extrabold text-indigo-900 block">5</span>
-                <span className="text-[11px] text-indigo-700 font-semibold">Enrolled Courses</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right 2 Columns: Portal Schedule & Notices */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Class Schedule / Timetable */}
-          <div className="classic-card rounded-3xl p-6 bg-white border border-slate-200">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-blue-700" /> Today's Academic Schedule
-              </h3>
-              <span className="text-xs text-slate-500 font-semibold">Academic Term 2026</span>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { time: '09:00 AM - 10:30 AM', subject: 'Advanced Computer Science', room: 'Lab 3', teacher: 'Dr. Alan Turing' },
-                { time: '10:45 AM - 12:15 PM', subject: 'Mathematics & Calculus', room: 'Hall B', teacher: 'Prof. Ada Lovelace' },
-                { time: '01:30 PM - 03:00 PM', subject: 'Physics & Electromagnetism', room: 'Physics Lab', teacher: 'Dr. Nikola Tesla' }
-              ].map((item, idx) => (
-                <div key={idx} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:border-blue-300 transition-colors">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center shrink-0">
-                      <Clock className="w-5 h-5 text-blue-700" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{item.subject}</h4>
-                      <p className="text-xs text-slate-500">{item.teacher} • {item.room}</p>
-                    </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
+                    <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Class</dt>
+                    <dd className="font-semibold text-slate-900 mt-0.5">{user.class || '—'}</dd>
                   </div>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white text-blue-800 border border-slate-200 shadow-xs">
-                    {item.time}
-                  </span>
+                  <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
+                    <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Roll no.</dt>
+                    <dd className="font-semibold text-slate-900 mt-0.5">{user.rollNumber || '—'}</dd>
+                  </div>
                 </div>
-              ))}
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
+                  <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</dt>
+                  <dd className="font-medium text-slate-800 mt-0.5 break-all">{user.email}</dd>
+                </div>
+              </dl>
             </div>
           </div>
 
-          {/* School Notices */}
-          <div className="classic-card rounded-3xl p-6 bg-white border border-slate-200">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-amber-600" /> School Announcements
-              </h3>
-              <span className="text-xs text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                Notice Board
-              </span>
+          <div className="lg:col-span-2 space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('assignments')}
+                className="classic-card-interactive rounded-2xl p-5 text-left"
+              >
+                <BookOpen className="w-5 h-5 text-blue-700 mb-3" />
+                <h3 className="font-bold text-slate-900">Coursework</h3>
+                <p className="text-sm text-slate-500 mt-1">Open OneDrive folders and confirm submissions.</p>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 mt-3">
+                  View assignments <ArrowRight className="w-4 h-4" />
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('groups')}
+                className="classic-card-interactive rounded-2xl p-5 text-left"
+              >
+                <Users className="w-5 h-5 text-blue-700 mb-3" />
+                <h3 className="font-bold text-slate-900">Study groups</h3>
+                <p className="text-sm text-slate-500 mt-1">Create a group, invite classmates, and track progress.</p>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700 mt-3">
+                  Manage groups <ArrowRight className="w-4 h-4" />
+                </span>
+              </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200">
-                <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
-                  Semester Examination Schedule
-                </h4>
-                <p className="text-xs text-amber-950">
-                  Semester examinations start next month. Ensure your roll number <strong>#{user.rollNumber}</strong> is registered on all subject forms.
-                </p>
-              </div>
+            <div className="classic-card p-5">
+              <h2 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Getting started
+              </h2>
+              <ul className="space-y-2.5 text-sm text-slate-600">
+                <li className="flex gap-2">
+                  <span className="text-emerald-600 font-bold">1.</span>
+                  Open Coursework and upload files to the professor’s OneDrive folder.
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-emerald-600 font-bold">2.</span>
+                  Confirm your submission so your progress is recorded.
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-emerald-600 font-bold">3.</span>
+                  Join or create a study group if the assignment is shared.
+                </li>
+              </ul>
+            </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <h4 className="text-xs font-bold text-slate-800 mb-1">Joineazy Registration Complete</h4>
-                <p className="text-xs text-slate-600">
-                  Student details for <strong>{user.school}</strong> (Class: {user.class}) have been verified and saved.
-                </p>
+            <div className="classic-card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-600" /> Notices
+                </h2>
+              </div>
+              <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-950">
+                Use <strong>Inbox</strong> for group invites and new assignment alerts. Confirm work as soon as you upload it so faculty can see completion.
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'assignments' && <StudentAssignmentsView token={token} />}
+
+      {activeTab === 'groups' && (
+        <StudentGroupManager user={user} token={token} onGroupUpdated={onRefreshNotifications} />
+      )}
+
+      {activeTab === 'notifications' && (
+        <NotificationCenter notifications={notifications} token={token} onRefresh={onRefreshNotifications} />
+      )}
     </div>
   );
 }

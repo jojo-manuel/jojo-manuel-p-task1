@@ -23,12 +23,12 @@ export default function GoogleModal({ isOpen, onClose, onGoogleSignIn, role = 's
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
-      <div className="classic-card w-full max-w-md rounded-2xl p-6 sm:p-8 relative shadow-2xl bg-white text-slate-800">
+    <div className="modal-overlay animate-fade-in">
+      <div className="modal-sheet classic-card p-5 sm:p-8 relative shadow-2xl bg-white text-slate-800">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+          className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 p-2.5 rounded-lg hover:bg-slate-100 transition-colors min-h-11 min-w-11 flex items-center justify-center"
         >
           <X className="w-5 h-5" />
         </button>
@@ -56,7 +56,7 @@ export default function GoogleModal({ isOpen, onClose, onGoogleSignIn, role = 's
             </svg>
           </div>
           <h3 className="text-xl font-bold text-slate-900">Sign in with Google</h3>
-          <p className="text-xs text-slate-500 mt-1">Authenticating for Joineazy Student Portal</p>
+            <p className="text-sm text-slate-500 mt-1">Use a Google account to continue</p>
         </div>
 
         {/* Quick Account Preset */}
@@ -101,8 +101,8 @@ export default function GoogleModal({ isOpen, onClose, onGoogleSignIn, role = 's
           </button>
         </form>
 
-        <p className="text-[11px] text-slate-400 text-center mt-4">
-          Protected by Google Identity Services & Joineazy JWT Security.
+        <p className="text-xs text-slate-400 text-center mt-4">
+          Demo Google sign-in for this portal.
         </p>
       </div>
     </div>
