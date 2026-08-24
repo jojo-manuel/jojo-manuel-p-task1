@@ -20,7 +20,9 @@ import {
   X,
   FileText,
   Send,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  UserCheck
 } from 'lucide-react';
 
 export default function AdminDashboard({ token }) {
