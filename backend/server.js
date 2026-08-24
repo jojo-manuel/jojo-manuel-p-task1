@@ -1261,15 +1261,17 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
 
     // Populate student name/email and assignment title on recent submissions
     const recentSubmissions = await Promise.all(
-      submissions.slice(0, 15).map(async (sub) => {
-        const studentRes = await db.query('SELECT name, email FROM users WHERE id = $1', [sub.student_id]);
+      submissions.slice(0, 30).map(async (sub) => {
+        const studentRes = await db.query('SELECT name, email, roll_number FROM users WHERE id = $1', [sub.student_id]);
         const asgn = assignments.find((a) => String(a.id) === String(sub.assignment_id));
         const student = studentRes.rows[0] || {};
         return {
           ...sub,
-          student_name: student.name || student.email,
-          student_email: student.email,
-          assignment_title: asgn ? asgn.title : 'Coursework Assignment'
+          student_name: student.name || student.email || 'Student',
+          student_email: student.email || '',
+          roll_number: student.roll_number || sub.roll_number || null,
+          assignment_title: asgn ? asgn.title : 'Coursework Assignment',
+          submitted_at: sub.submitted_at || sub.created_at
         };
       })
     );

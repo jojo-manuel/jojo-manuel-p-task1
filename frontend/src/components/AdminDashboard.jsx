@@ -667,16 +667,22 @@ export default function AdminDashboard({ token }) {
                       >
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm text-slate-900">
-                              {sub.student_name || sub.student_email}
+                            <span className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                              <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                              Student Name: {sub.student_name || 'Unnamed Student'}
                             </span>
+                            {sub.student_email && sub.student_email !== sub.student_name && (
+                              <span className="text-xs text-slate-500 font-medium">
+                                ({sub.student_email})
+                              </span>
+                            )}
                             {sub.roll_number && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Roll #{sub.roll_number}
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                Roll / ID #{sub.roll_number}
                               </span>
                             )}
                             {sub.group_name && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
                                 Group: {sub.group_name}
                               </span>
                             )}
