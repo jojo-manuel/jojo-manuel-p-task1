@@ -210,15 +210,13 @@ function formatUserResponse(user) {
   const empId = user.employee_id || user.employeeId || user.roll_number || user.rollNumber || user.student_id || null;
   const isComplete = isTeacher
     ? Boolean(user.name && empId && (user.phone_number || user.phone))
-    : Boolean(user.school && (user.class_name || user.class) && (user.roll_number || user.rollNumber || user.student_id) && user.name && (user.phone_number || user.phone));
+    : Boolean(user.name && (user.roll_number || user.rollNumber || user.student_id) && (user.phone_number || user.phone));
 
   return {
     id: user.id,
     email: user.email,
     role,
     name: user.name || null,
-    school: user.school || null,
-    class: user.class_name || user.class || null,
     rollNumber: user.roll_number || user.rollNumber || user.student_id || null,
     employeeId: empId,
     phone: user.phone_number || user.phone || null,
