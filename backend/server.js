@@ -408,11 +408,11 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 // 7. Update Student Details Onboarding Endpoint
 app.put('/api/student/profile', authenticateToken, async (req, res) => {
   try {
-    const { name, school, class: className, rollNumber, phone } = req.body;
+    const { name, rollNumber, phone } = req.body;
 
-    if (!name || !school || !className || !rollNumber || !phone) {
+    if (!name || !rollNumber || !phone) {
       return res.status(400).json({
-        message: 'All fields are required: Name, School, Class, Roll Number, and Phone Number'
+        message: 'All fields are required: Name, Roll Number / Student ID, and Phone Number'
       });
     }
 
@@ -423,8 +423,8 @@ app.put('/api/student/profile', authenticateToken, async (req, res) => {
     }
 
     const updateResult = await db.query(
-      'UPDATE users SET name = $1, school = $2, class_name = $3, roll_number = $4, phone_number = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6 RETURNING *',
-      [name.trim(), school.trim(), className.trim(), rollNumber.trim(), cleanPhone, req.user.id]
+      'UPDATE users SET name = $1, roll_number = $2, phone_number = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [name.trim(), rollNumber.trim(), cleanPhone, req.user.id]
     );
 
     if (updateResult.rows.length === 0) {

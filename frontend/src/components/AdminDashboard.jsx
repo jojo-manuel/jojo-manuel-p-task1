@@ -730,7 +730,7 @@ export default function AdminDashboard({ token }) {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="classic-input pl-10 text-xs py-2.5"
-                placeholder="Search name, school, roll #..."
+                placeholder="Search student name, email, roll #..."
               />
             </div>
 
@@ -777,17 +777,9 @@ export default function AdminDashboard({ token }) {
                   </div>
 
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-800">
-                      <School className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span className="font-bold">{student.school || 'School Not Provided'}</span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-200/70">
-                      <span className="flex items-center gap-1 text-[11px]">
-                        <BookOpen className="w-3 h-3 text-indigo-600 shrink-0" /> Class: <strong className="text-slate-900">{student.class || 'N/A'}</strong>
-                      </span>
-                      <span className="flex items-center gap-1 text-[11px]">
-                        <Hash className="w-3 h-3 text-emerald-600 shrink-0" /> Roll: <strong className="text-emerald-700">#{student.rollNumber || 'N/A'}</strong>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
+                      <span className="flex items-center gap-1 text-[11px] font-semibold">
+                        <Hash className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Roll / ID: <strong className="text-emerald-700">#{student.rollNumber || 'N/A'}</strong>
                       </span>
                     </div>
 

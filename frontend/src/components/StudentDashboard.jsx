@@ -38,7 +38,7 @@ export default function StudentDashboard({
                 Hello, {firstName}
               </h1>
               <p className="text-sm text-slate-500 mt-0.5 truncate">
-                {[user.school, user.class && `Class ${user.class}`, user.rollNumber && `Roll ${user.rollNumber}`]
+                {[user.rollNumber && `Roll / ID #${user.rollNumber}`, user.phone && `Phone: ${user.phone}`]
                   .filter(Boolean)
                   .join(' · ') || 'Complete your profile'}
               </p>
@@ -94,12 +94,12 @@ export default function StudentDashboard({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <dt className="text-xs text-slate-500">Class</dt>
-                    <dd className="font-medium text-slate-900 mt-0.5">{user.class || '—'}</dd>
+                    <dt className="text-xs text-slate-500">Roll / Student ID</dt>
+                    <dd className="font-medium text-slate-900 mt-0.5">{user.rollNumber || '—'}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">Roll no.</dt>
-                    <dd className="font-medium text-slate-900 mt-0.5">{user.rollNumber || '—'}</dd>
+                    <dt className="text-xs text-slate-500">Phone</dt>
+                    <dd className="font-medium text-slate-900 mt-0.5">{user.phone || '—'}</dd>
                   </div>
                 </div>
                 <div>

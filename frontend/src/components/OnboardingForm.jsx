@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { School, Hash, UserCheck, Phone, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { Hash, UserCheck, Phone, ArrowRight } from 'lucide-react';
 
 export default function OnboardingForm({ user, onSubmitDetails, loading, error }) {
   const [formData, setFormData] = useState({
     name: user?.name || '',
-    school: user?.school || '',
-    class: user?.class || '',
     rollNumber: user?.rollNumber || '',
     phone: user?.phone || ''
   });
@@ -26,7 +24,7 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
           <p className="text-sm text-slate-500 mb-1">Step 2 of 2</p>
           <h2 className="text-xl font-semibold text-slate-900">Student details</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Add your school details so faculty can identify you.
+            Complete your profile details so faculty and study group members can identify you.
           </p>
         </div>
 
@@ -57,50 +55,10 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* School */}
+            {/* Roll Number / Student ID */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                School Name <span className="text-blue-600">*</span>
-              </label>
-              <div className="relative">
-                <School className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  name="school"
-                  value={formData.school}
-                  onChange={handleChange}
-                  className="classic-input pl-10"
-                  placeholder="e.g. St. Jude High School"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Class */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Class / Grade <span className="text-blue-600">*</span>
-              </label>
-              <div className="relative">
-                <BookOpen className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <input
-                  type="text"
-                  name="class"
-                  value={formData.class}
-                  onChange={handleChange}
-                  className="classic-input pl-10"
-                  placeholder="e.g. Class 10 - Section A"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Roll Number */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Roll Number <span className="text-blue-600">*</span>
+                Roll Number / Student ID <span className="text-blue-600">*</span>
               </label>
               <div className="relative">
                 <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
