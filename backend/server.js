@@ -1185,45 +1185,72 @@ app.post('/api/assignments/:id/submit', authenticateToken, async (req, res) => {
   }
 });
 
-// 23. Admin / Professor Analytics Endpoint
-app.get(['/api/admin/analytics', '/api/admin/analytics'], authenticateToken, requireAdmin, async (req, res) => {
+// 23. Admin / Professor Analytics Endpoint (Teacher-Specific)
+app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const facultyUserId = String(req.user.id);
+
     const studentsRes = await db.query("SELECT * FROM users WHERE role = 'student'");
     const students = studentsRes.rows;
 
     const groupsRes = await db.query('SELECT * FROM groups');
     const groups = groupsRes.rows;
 
+    // Filter assignments given ONLY by this specific teacher
     const asgnsRes = await db.query('SELECT * FROM assignments');
-    const assignments = asgnsRes.rows.filter((asgn) => isOwnedByFaculty(asgn, req.user.id));
+    const assignments = asgnsRes.rows.filter((asgn) => {
+      const createdBy = String(asgn.created_by || '');
+      return createdBy === facultyUserId || createdBy.toLowerCase() === facultyUserId.toLowerCase();
+    });
 
     const subsRes = await db.query('SELECT * FROM assignment_submissions');
     const myAssignmentIds = new Set(assignments.map((a) => String(a.id)));
     const submissions = subsRes.rows.filter((s) => myAssignmentIds.has(String(s.assignment_id)));
 
-    // Calculate group performance breakdown
+    // Populate student name/email and assignment title on recent submissions
+    const recentSubmissions = await Promise.all(
+      submissions.slice(0, 15).map(async (sub) => {
+        const studentRes = await db.query('SELECT name, email FROM users WHERE id = $1', [sub.student_id]);
+        const asgn = assignments.find((a) => String(a.id) === String(sub.assignment_id));
+        const student = studentRes.rows[0] || {};
+        return {
+          ...sub,
+          student_name: student.name || student.email,
+          student_email: student.email,
+          assignment_title: asgn ? asgn.title : 'Coursework Assignment'
+        };
+      })
+    );
+
+    // Calculate group performance breakdown strictly for this teacher's assignments
     const groupPerformance = await Promise.all(
       groups.map(async (group) => {
         const membersRes = await db.query('SELECT * FROM group_members WHERE group_id = $1 AND status = \'accepted\'', [group.id]);
         const memberCount = membersRes.rows.length;
-        const groupSubmissions = submissions.filter(s => s.group_id === group.id);
-        
+        const groupSubmissions = submissions.filter((s) => String(s.group_id) === String(group.id));
+
         return {
           id: group.id,
           name: group.name,
           memberCount,
           submissionCount: groupSubmissions.length,
-          completionRate: memberCount > 0 && assignments.length > 0
-            ? Math.round((groupSubmissions.length / (memberCount * assignments.length)) * 100)
-            : (groupSubmissions.length > 0 ? 100 : 0)
+          completionRate:
+            memberCount > 0 && assignments.length > 0
+              ? Math.round((groupSubmissions.length / (memberCount * assignments.length)) * 100)
+              : groupSubmissions.length > 0
+              ? 100
+              : 0
         };
       })
     );
 
     const totalExpectedSubmissions = students.length * assignments.length;
-    const overallCompletionRate = totalExpectedSubmissions > 0
-      ? Math.round((submissions.length / totalExpectedSubmissions) * 100)
-      : (submissions.length > 0 ? 100 : 0);
+    const overallCompletionRate =
+      totalExpectedSubmissions > 0
+        ? Math.round((submissions.length / totalExpectedSubmissions) * 100)
+        : submissions.length > 0
+        ? 100
+        : 0;
 
     res.json({
       summary: {
@@ -1234,7 +1261,7 @@ app.get(['/api/admin/analytics', '/api/admin/analytics'], authenticateToken, req
         overallCompletionRate
       },
       groupPerformance,
-      recentSubmissions: submissions.slice(0, 15)
+      recentSubmissions
     });
   } catch (error) {
     console.error('Fetch Analytics Error:', error);
