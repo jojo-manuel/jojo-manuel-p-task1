@@ -141,36 +141,23 @@ export default function StudentAssignmentsView({ token }) {
 
   return (
     <div className="w-full space-y-6 text-left animate-fade-in">
-      <div className="portal-hero p-4 sm:p-6 md:p-7 space-y-4 sm:space-y-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <p className="text-sm text-indigo-100 font-medium">Your coursework</p>
-            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight mt-1">Assignments</h2>
-            <p className="text-sm text-slate-200 mt-1">
-              Upload to OneDrive, then confirm here so your professor can see it.
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-900">Coursework</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Upload to OneDrive, then confirm so your professor can see it.
             </p>
           </div>
-          <span className="bg-white/15 border border-white/20 px-3.5 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-emerald-300" />
-            {progressPercent === 100 && totalCount > 0 ? 'All complete' : `${progressPercent}% complete`}
-          </span>
+          <p className="text-sm text-slate-500">
+            {completedCount} of {totalCount} confirmed
+          </p>
         </div>
-
-        <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2">
-          <div className="flex items-start sm:items-center justify-between gap-2 text-xs font-bold">
-            <span className="text-indigo-200 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" /> Personal completion
-            </span>
-            <span className="text-white font-extrabold shrink-0">
-              {completedCount}/{totalCount} ({progressPercent}%)
-            </span>
-          </div>
-          <div className="w-full bg-slate-800/80 h-3 rounded-full overflow-hidden p-0.5 border border-white/10">
-            <div
-              style={{ width: `${progressPercent}%` }}
-              className="bg-gradient-to-r from-emerald-400 to-teal-400 h-full rounded-full transition-all duration-700"
-            />
-          </div>
+        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div
+            style={{ width: `${progressPercent}%` }}
+            className="h-full bg-slate-900 rounded-full transition-all"
+          />
         </div>
       </div>
 
@@ -182,12 +169,12 @@ export default function StudentAssignmentsView({ token }) {
       )}
 
       {loading ? (
-        <div className="p-12 text-center classic-card rounded-3xl bg-white space-y-2">
+        <div className="p-12 text-center classic-card rounded-xl bg-white space-y-2">
           <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin mx-auto mb-2" />
           <p className="text-xs text-slate-500 font-semibold">Loading assignments...</p>
         </div>
       ) : assignments.length === 0 ? (
-        <div className="p-12 text-center classic-card rounded-3xl bg-white border border-slate-200 space-y-3">
+        <div className="p-12 text-center classic-card rounded-xl bg-white border border-slate-200 space-y-3">
           <FileText className="w-12 h-12 text-slate-300 mx-auto" />
           <h3 className="text-base font-bold text-slate-800">No assignments posted yet</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -204,7 +191,7 @@ export default function StudentAssignmentsView({ token }) {
             return (
               <div
                 key={asgn.id}
-                className="classic-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 bg-white border border-slate-200 shadow-md space-y-4 flex flex-col justify-between hover:border-indigo-300 transition-all min-w-0"
+                className="classic-card rounded-2xl sm:rounded-xl p-4 sm:p-6 bg-white border border-slate-200 shadow-md space-y-4 flex flex-col justify-between hover:border-indigo-300 transition-all min-w-0"
               >
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
@@ -231,10 +218,10 @@ export default function StudentAssignmentsView({ token }) {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-base font-extrabold text-slate-900">{asgn.title}</h3>
+                      <h3 className="text-base font-semibold text-slate-900">{asgn.title}</h3>
                     </div>
                     {isDone ? (
-                      <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold shrink-0 flex items-center gap-1">
+                      <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-semibold shrink-0 flex items-center gap-1">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Submitted
                       </span>
                     ) : (
@@ -258,7 +245,7 @@ export default function StudentAssignmentsView({ token }) {
                         href={asgn.onedrive_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full sm:w-auto justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 shrink-0 min-h-10"
+                        className="w-full sm:w-auto justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 shrink-0 min-h-10"
                       >
                         Open OneDrive <ExternalLink className="w-3.5 h-3.5" />
                       </a>
@@ -307,7 +294,7 @@ export default function StudentAssignmentsView({ token }) {
                 <div className="pt-3 border-t border-slate-100 flex justify-stretch sm:justify-end">
                   <button
                     onClick={() => handleOpenSubmitModal(asgn)}
-                    className={`w-full sm:w-auto justify-center font-extrabold text-xs px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-11 ${
+                    className={`w-full sm:w-auto justify-center font-semibold text-xs px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-11 ${
                       isDone
                         ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                         : 'bg-indigo-600 hover:bg-indigo-700 text-white'
@@ -331,7 +318,7 @@ export default function StudentAssignmentsView({ token }) {
                 <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">
                   Step {submitStep} of 2
                 </span>
-                <h3 className="text-base font-extrabold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900">
                   {submitStep === 1 ? 'Yes, I have submitted' : 'Confirm submission'}
                 </h3>
               </div>
@@ -445,7 +432,7 @@ export default function StudentAssignmentsView({ token }) {
               <div className="space-y-4">
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2 text-center">
                   <ShieldCheck className="w-8 h-8 text-amber-600 mx-auto" />
-                  <h4 className="text-sm font-extrabold text-amber-950">Confirm submission</h4>
+                  <h4 className="text-sm font-semibold text-amber-950">Confirm submission</h4>
                   <p className="text-xs text-amber-800 font-medium">
                     This records that you submitted “{selectedAsgn.title}” and updates your group progress bar.
                   </p>
@@ -462,7 +449,7 @@ export default function StudentAssignmentsView({ token }) {
                     type="button"
                     disabled={submitting}
                     onClick={handleFinalConfirmSubmission}
-                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl flex items-center gap-1.5 min-h-11"
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-xs px-6 py-2.5 rounded-xl flex items-center gap-1.5 min-h-11"
                   >
                     <CheckCircle className="w-4 h-4" />
                     {submitting ? 'Saving...' : 'Confirm'}

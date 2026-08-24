@@ -102,7 +102,7 @@ export default function GoogleModal({ isOpen, onClose, onGoogleSignIn, role = 's
         </form>
 
         <p className="text-xs text-slate-400 text-center mt-4">
-          Demo Google sign-in for this portal.
+          Demo sign-in for this portal.
         </p>
       </div>
     </div>

@@ -19,17 +19,14 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
 
   return (
     <div className="w-full max-w-lg mx-auto my-4 sm:my-8 animate-fade-in text-left text-slate-800">
-      <div className="classic-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 bg-white border border-slate-200 shadow-xl space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-            <Shield className="w-3.5 h-3.5" /> Faculty setup
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-            Complete faculty details
+      <div className="classic-card p-5 sm:p-8 bg-white space-y-6">
+        <div className="space-y-1">
+          <p className="text-sm text-slate-500">Faculty</p>
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
+            Complete your profile
           </h2>
           <p className="text-sm text-slate-500">
-            Enter your faculty details to open the teaching workspace.
+            Add your details to open the teaching workspace.
           </p>
         </div>
 
@@ -115,7 +112,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs py-3.5 px-6 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-4"
+            className="btn-primary w-full mt-4"
           >
             {loading ? (
               <span>Saving Details...</span>

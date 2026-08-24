@@ -126,23 +126,40 @@ function isOwnedByFaculty(asgn, userId) {
   return idsMatch(asgn.created_by, userId);
 }
 
-function isAssignedToStudent(asgn, studentGroupIds) {
-  if (assignmentTargetType(asgn) !== 'groups') return true;
+function isAssignedToStudent(asgn, studentGroupIds = []) {
+  if (!asgn) return false;
+  const targetType = assignmentTargetType(asgn);
+  // If assigned to all students ('all'), it is assigned to this student
+  if (targetType !== 'groups') return true;
+
+  // If assigned to specific group(s), verify student belongs to at least one target group
   const targetIds = parseAssignedGroupIds(asgn.assigned_group_ids);
-  if (targetIds.length === 0) return false;
+  if (!Array.isArray(targetIds) || targetIds.length === 0) return false;
+
   return targetIds.some((gId) => studentGroupIds.some((u) => idsMatch(u, gId)));
 }
 
 async function getAcceptedGroupIds(userId) {
-  const res = await db.query(
-    `SELECT group_id FROM group_members
-     WHERE CAST(user_id AS TEXT) = CAST($1 AS TEXT)
-       AND (status = 'accepted' OR role = 'creator')`,
-    [userId]
-  );
-  return res.rows
-    .map((g) => normalizeId(g.group_id || g.id || g.groupId))
-    .filter((x) => x !== null);
+  try {
+    const membersRes = await db.query(
+      `SELECT group_id FROM group_members
+       WHERE CAST(user_id AS TEXT) = CAST($1 AS TEXT)
+         AND (LOWER(status) = 'accepted' OR LOWER(role) = 'creator' OR LOWER(role) = 'admin')`,
+      [userId]
+    );
+    const createdRes = await db.query(
+      `SELECT id FROM groups WHERE CAST(created_by AS TEXT) = CAST($1 AS TEXT)`,
+      [userId]
+    );
+    const allGroupIds = [
+      ...membersRes.rows.map((g) => g.group_id),
+      ...createdRes.rows.map((g) => g.id)
+    ];
+    return Array.from(new Set(allGroupIds.map(normalizeId).filter((x) => x !== null)));
+  } catch (err) {
+    console.error('Error fetching student group IDs:', err);
+    return [];
+  }
 }
 
 async function buildGroupAssignmentProgress(assignmentId, groupId) {

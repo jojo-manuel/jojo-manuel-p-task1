@@ -227,19 +227,18 @@ export default function AdminDashboard({ token }) {
 
   return (
     <div className="w-full space-y-5 animate-fade-in text-left">
-      <section className="portal-hero p-4 sm:p-6 md:p-7">
+      <section className="mb-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm text-emerald-100 font-medium mb-1">Faculty workspace</p>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight">Assignments & analytics</h1>
-            <p className="text-sm text-slate-200 mt-1.5 max-w-xl">
-              Post coursework with OneDrive links, assign to the class or a group, and see who has confirmed.
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">Assignments</h1>
+            <p className="text-sm text-slate-500 mt-1 max-w-xl">
+              Post coursework, assign it to the class or a group, and track confirmations.
             </p>
           </div>
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="w-full sm:w-auto bg-white text-slate-900 hover:bg-slate-100 font-semibold text-sm py-2.5 px-4 rounded-xl inline-flex items-center justify-center gap-2 shrink-0 min-h-11"
+            className="btn-primary w-full sm:w-auto min-h-10"
           >
             <PlusCircle className="w-4 h-4" /> New assignment
           </button>
@@ -276,7 +275,7 @@ export default function AdminDashboard({ token }) {
       {activeTab === 'assignments' && (
         <div className="space-y-6">
           {loadingAssignments ? (
-            <div className="text-center py-12 classic-card rounded-3xl bg-white space-y-2">
+            <div className="text-center py-12 classic-card rounded-xl bg-white space-y-2">
               <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
               <p className="text-xs text-slate-500 font-semibold">Loading coursework records...</p>
             </div>
@@ -285,7 +284,7 @@ export default function AdminDashboard({ token }) {
               {asgnError}
             </div>
           ) : assignments.length === 0 ? (
-            <div className="text-center py-12 classic-card rounded-3xl bg-white border border-slate-200 space-y-3">
+            <div className="text-center py-12 classic-card rounded-xl bg-white border border-slate-200 space-y-3">
               <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
               <h3 className="text-base font-bold text-slate-800">No assignments yet</h3>
               <p className="text-sm text-slate-500 max-w-sm mx-auto">
@@ -300,7 +299,7 @@ export default function AdminDashboard({ token }) {
                 return (
                   <div
                     key={asgn.id}
-                    className="classic-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 bg-white border border-slate-200 shadow-md space-y-4 flex flex-col justify-between hover:border-emerald-300 transition-all min-w-0"
+                    className="classic-card rounded-2xl sm:rounded-xl p-4 sm:p-6 bg-white border border-slate-200 shadow-md space-y-4 flex flex-col justify-between hover:border-emerald-300 transition-all min-w-0"
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
@@ -327,10 +326,10 @@ export default function AdminDashboard({ token }) {
                               </span>
                             )}
                           </div>
-                          <h3 className="text-base font-extrabold text-slate-900">{asgn.title}</h3>
+                          <h3 className="text-base font-semibold text-slate-900">{asgn.title}</h3>
                         </div>
 
-                        <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold shrink-0">
+                        <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-semibold shrink-0">
                           {asgn.submissionCount || 0} Submitted
                         </span>
                       </div>
@@ -398,7 +397,7 @@ export default function AdminDashboard({ token }) {
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           {loadingAnalytics ? (
-            <div className="text-center py-12 classic-card rounded-3xl bg-white space-y-2">
+            <div className="text-center py-12 classic-card rounded-xl bg-white space-y-2">
               <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
               <p className="text-xs text-slate-500 font-semibold">Calculating submission analytics...</p>
             </div>
@@ -406,41 +405,41 @@ export default function AdminDashboard({ token }) {
             <>
               {/* Summary Stats Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="classic-card p-5 rounded-3xl bg-white border border-slate-200 space-y-1">
+                <div className="classic-card p-5 rounded-xl bg-white border border-slate-200 space-y-1">
                   <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
                     Total Students
                   </span>
-                  <span className="text-2xl font-extrabold text-slate-900 block">
+                  <span className="text-2xl font-semibold text-slate-900 block">
                     {analytics.summary?.totalStudents || 0}
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium">Registered</span>
                 </div>
 
-                <div className="classic-card p-5 rounded-3xl bg-white border border-slate-200 space-y-1">
+                <div className="classic-card p-5 rounded-xl bg-white border border-slate-200 space-y-1">
                   <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
                     Active Study Groups
                   </span>
-                  <span className="text-2xl font-extrabold text-indigo-700 block">
+                  <span className="text-2xl font-semibold text-indigo-700 block">
                     {analytics.summary?.totalGroups || 0}
                   </span>
                   <span className="text-[11px] text-indigo-600 font-medium">Collaborating</span>
                 </div>
 
-                <div className="classic-card p-5 rounded-3xl bg-white border border-slate-200 space-y-1">
+                <div className="classic-card p-5 rounded-xl bg-white border border-slate-200 space-y-1">
                   <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
                     Total Coursework
                   </span>
-                  <span className="text-2xl font-extrabold text-emerald-700 block">
+                  <span className="text-2xl font-semibold text-emerald-700 block">
                     {analytics.summary?.totalAssignments || 0}
                   </span>
                   <span className="text-[11px] text-emerald-600 font-medium">Published</span>
                 </div>
 
-                <div className="classic-card p-5 rounded-3xl bg-white border border-slate-200 space-y-1">
+                <div className="classic-card p-5 rounded-xl bg-white border border-slate-200 space-y-1">
                   <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold block">
                     Completion Rate
                   </span>
-                  <span className="text-2xl font-extrabold text-purple-700 block">
+                  <span className="text-2xl font-semibold text-purple-700 block">
                     {analytics.summary?.overallCompletionRate || 0}%
                   </span>
                   <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
@@ -453,7 +452,7 @@ export default function AdminDashboard({ token }) {
               </div>
 
               {/* Group Performance Breakdown */}
-              <div className="classic-card p-4 sm:p-6 bg-white rounded-3xl border border-slate-200 shadow-md space-y-4">
+              <div className="classic-card p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
                 <div className="flex items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 min-w-0">
                     <TrendingUp className="w-4 h-4 text-indigo-600 shrink-0" />
@@ -472,8 +471,8 @@ export default function AdminDashboard({ token }) {
                         className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5"
                       >
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-extrabold text-slate-900">{group.name}</h4>
-                          <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                          <h4 className="text-sm font-semibold text-slate-900">{group.name}</h4>
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
                             {group.completionRate}% Done
                           </span>
                         </div>
@@ -500,7 +499,7 @@ export default function AdminDashboard({ token }) {
               </div>
 
               {/* Recent Student Submissions Table */}
-              <div className="classic-card p-6 bg-white rounded-3xl border border-slate-200 shadow-md space-y-4">
+              <div className="classic-card p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-emerald-600" /> Student Submission Confirmations
@@ -516,7 +515,7 @@ export default function AdminDashboard({ token }) {
                       >
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-sm text-slate-900">
+                            <span className="font-semibold text-sm text-slate-900">
                               {sub.student_name || sub.student_email}
                             </span>
                             {sub.roll_number && (
@@ -589,12 +588,12 @@ export default function AdminDashboard({ token }) {
             </div>
 
             <div className="text-xs text-slate-600 font-bold">
-              Total Registered Students: <span className="text-emerald-700 font-extrabold text-sm">{filteredStudents.length}</span>
+              Total Registered Students: <span className="text-emerald-700 font-semibold text-sm">{filteredStudents.length}</span>
             </div>
           </div>
 
           {loadingDirectory ? (
-            <div className="text-center py-12 classic-card rounded-3xl bg-white">
+            <div className="text-center py-12 classic-card rounded-xl bg-white">
               <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
               <p className="text-xs text-slate-500 font-medium">Loading student records...</p>
             </div>
@@ -603,7 +602,7 @@ export default function AdminDashboard({ token }) {
               {directoryError}
             </div>
           ) : filteredStudents.length === 0 ? (
-            <div className="text-center py-12 classic-card rounded-3xl bg-white">
+            <div className="text-center py-12 classic-card rounded-xl bg-white">
               <Users className="w-12 h-12 text-slate-300 mx-auto mb-2" />
               <h3 className="text-base font-bold text-slate-700">No Student Records Found</h3>
             </div>

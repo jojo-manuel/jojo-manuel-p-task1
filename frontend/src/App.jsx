@@ -321,7 +321,7 @@ function App() {
       />
 
       <footer className="app-footer">
-        <p>Joineazy Academic Portal · Secure access for students and faculty</p>
+        <p>Joineazy</p>
       </footer>
     </div>
   );

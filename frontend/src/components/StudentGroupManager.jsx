@@ -196,9 +196,9 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
 
   return (
     <div className="w-full space-y-6 text-left animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 classic-card p-4 sm:p-6 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Study groups</h2>
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Groups</h2>
           <p className="text-sm text-slate-500 mt-0.5">
             Create a group and invite classmates by email or roll number.
           </p>
@@ -325,16 +325,14 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
 
         <div className="md:col-span-7 space-y-6">
           {selectedGroup ? (
-            <div className="classic-card p-4 sm:p-6 bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-md space-y-5 sm:space-y-6">
-              <div className="p-4 sm:p-6 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 rounded-2xl text-white space-y-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h3 className="text-lg sm:text-xl font-extrabold break-anywhere">{selectedGroup.name}</h3>
-                  <span className="text-[11px] sm:text-xs px-3 py-1 font-bold bg-white/15 border border-white/20 rounded-full max-w-full truncate">
-                    Group #{String(selectedGroup.id).slice(-8)}
-                  </span>
+            <div className="classic-card p-4 sm:p-5 space-y-5">
+              <div className="pb-4 border-b border-slate-100">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-lg font-semibold text-slate-900 break-anywhere">{selectedGroup.name}</h3>
+                  <span className="text-[11px] text-slate-400 shrink-0">#{String(selectedGroup.id).slice(-6)}</span>
                 </div>
                 {selectedGroup.description && (
-                  <p className="text-xs text-indigo-200/90 font-medium">{selectedGroup.description}</p>
+                  <p className="text-sm text-slate-500 mt-1">{selectedGroup.description}</p>
                 )}
               </div>
 
