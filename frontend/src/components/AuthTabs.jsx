@@ -114,14 +114,14 @@ export default function AuthTabs({ onRegister, onLogin, onOpenGoogleModal, loadi
 
           <div>
             <label className="field-label" htmlFor="auth-email">Email</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative flex items-center">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 id="auth-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="classic-input pl-10"
+                className="classic-input pl-11"
                 placeholder="you@school.edu"
                 autoComplete="email"
                 required
@@ -131,14 +131,14 @@ export default function AuthTabs({ onRegister, onLogin, onOpenGoogleModal, loadi
 
           <div>
             <label className="field-label" htmlFor="auth-password">Password</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative flex items-center">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 id="auth-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="classic-input pl-10"
+                className="classic-input pl-11"
                 placeholder={activeTab === 'register' ? 'Create a password' : 'Your password'}
                 autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'}
                 required

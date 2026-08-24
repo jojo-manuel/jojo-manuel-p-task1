@@ -40,14 +40,14 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Full Name <span className="text-blue-600">*</span>
             </label>
-            <div className="relative">
-              <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <div className="relative flex items-center">
+              <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="classic-input pl-10"
+                className="classic-input pl-11"
                 placeholder="e.g. Eleanor Vance"
                 required
               />
@@ -60,14 +60,14 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Roll Number / Student ID <span className="text-blue-600">*</span>
               </label>
-              <div className="relative">
-                <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <div className="relative flex items-center">
+                <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
                 <input
                   type="text"
                   name="rollNumber"
                   value={formData.rollNumber}
                   onChange={handleChange}
-                  className="classic-input pl-10"
+                  className="classic-input pl-11"
                   placeholder="e.g. 10245"
                   required
                 />
@@ -79,14 +79,14 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Phone Number <span className="text-blue-600">*</span>
               </label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <div className="relative flex items-center">
+                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="classic-input pl-10"
+                  className="classic-input pl-11"
                   placeholder="e.g. +1 555 019 2834"
                   required
                 />

@@ -95,6 +95,11 @@
   outline: none;
 }
 
+.classic-input.pl-10,
+.classic-input.pl-11 {
+  padding-left: 2.75rem !important;
+}
+
 .classic-input:focus,
 .classic-input:focus {
   border-color: #2563eb;

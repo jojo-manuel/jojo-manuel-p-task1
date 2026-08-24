@@ -43,15 +43,15 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Full Name (with Title) <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <div className="relative flex items-center">
+              <User className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Prof. Alan Turing"
-                className="classic-input pl-10 text-xs font-semibold"
+                className="classic-input pl-11 text-xs font-semibold"
               />
             </div>
           </div>
@@ -61,15 +61,15 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Faculty / Employee ID <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <div className="relative flex items-center">
+              <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 type="text"
                 required
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 placeholder="e.g. EMP-90210"
-                className="classic-input pl-10 text-xs font-semibold"
+                className="classic-input pl-11 text-xs font-semibold"
               />
             </div>
           </div>
@@ -79,15 +79,15 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Contact Phone Number <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <div className="relative flex items-center">
+              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 type="tel"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +1 555 999 8888"
-                className="classic-input pl-10 text-xs font-semibold"
+                className="classic-input pl-11 text-xs font-semibold"
               />
             </div>
           </div>
@@ -97,14 +97,14 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Department / Institution Name
             </label>
-            <div className="relative">
-              <School className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <div className="relative flex items-center">
+              <School className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
               <input
                 type="text"
                 value={school}
                 onChange={(e) => setSchool(e.target.value)}
                 placeholder="e.g. Department of Computer Science"
-                className="classic-input pl-10 text-xs font-medium"
+                className="classic-input pl-11 text-xs font-medium"
               />
             </div>
           </div>
