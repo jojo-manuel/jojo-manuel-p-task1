@@ -6,8 +6,11 @@
   "private": true,
   "scripts": {
     "start": "node backend/server.js",
-    "build": "node -e \"const fs = require('fs'), { execSync } = require('child_process'); if (fs.existsSync('frontend')) { execSync('cd frontend && npx vite build', { stdio: 'inherit' }); } else { execSync('npx vite build', { stdio: 'inherit' }); }\"",
-    "vercel-build": "node -e \"const fs = require('fs'), { execSync } = require('child_process'); if (fs.existsSync('frontend')) { execSync('cd frontend && npx vite build', { stdio: 'inherit' }); } else { execSync('npx vite build', { stdio: 'inherit' }); }\""
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build",
+    "vercel-build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
