@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FileText,
   ExternalLink,
@@ -17,6 +18,7 @@ import {
   UserCheck,
   Zap
 } from 'lucide-react';
+import { PopoverSelect } from './AnchoredPopover';
 
 export default function StudentAssignmentsView({ token }) {
   const [assignments, setAssignments] = useState([]);
@@ -34,6 +36,8 @@ export default function StudentAssignmentsView({ token }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(null);
   const [submitError, setSubmitError] = useState(null);
+  const [submitPopoverStyle, setSubmitPopoverStyle] = useState(null);
+  const submitAnchorRef = useRef(null);
 
   useEffect(() => {
     fetchAssignments();
@@ -77,7 +81,8 @@ export default function StudentAssignmentsView({ token }) {
     }
   };
 
-  const handleOpenSubmitModal = (asgn) => {
+  const handleOpenSubmitModal = (asgn, event) => {
+    submitAnchorRef.current = event?.currentTarget || null;
     setSelectedAsgn(asgn);
     setSubmitStep(1);
     setHasConfirmedUpload(false);
@@ -88,6 +93,68 @@ export default function StudentAssignmentsView({ token }) {
     setSubmitSuccess(null);
     setSubmitError(null);
   };
+
+  useLayoutEffect(() => {
+    if (!selectedAsgn) {
+      setSubmitPopoverStyle(null);
+      return undefined;
+    }
+
+    const place = () => {
+      const margin = 12;
+      const gap = 10;
+      const width = Math.min(720, window.innerWidth - margin * 2);
+      const maxHeight = Math.min(760, window.innerHeight - margin * 2);
+      const anchor = submitAnchorRef.current?.getBoundingClientRect();
+      const fallbackLeft = Math.max(margin, (window.innerWidth - width) / 2);
+
+      if (!anchor) {
+        setSubmitPopoverStyle({
+          left: fallbackLeft,
+          top: Math.max(margin, window.innerHeight * 0.08),
+          width,
+          maxHeight
+        });
+        return;
+      }
+
+      const spaceBelow = window.innerHeight - anchor.bottom - gap - margin;
+      const spaceAbove = anchor.top - gap - margin;
+      const openUp = spaceBelow < 420 && spaceAbove > spaceBelow;
+
+      let left = anchor.left;
+      if (left + width > window.innerWidth - margin) {
+        left = anchor.right - width;
+      }
+      if (left < margin) left = margin;
+
+      if (openUp) {
+        setSubmitPopoverStyle({
+          left,
+          width,
+          maxHeight: Math.min(maxHeight, Math.max(220, spaceAbove)),
+          bottom: window.innerHeight - anchor.top + gap,
+          top: 'auto'
+        });
+      } else {
+        setSubmitPopoverStyle({
+          left,
+          width,
+          maxHeight: Math.min(maxHeight, Math.max(220, spaceBelow)),
+          top: anchor.bottom + gap,
+          bottom: 'auto'
+        });
+      }
+    };
+
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [selectedAsgn, submitStep]);
 
   const handleProceedToStep2 = (e) => {
     e.preventDefault();
@@ -169,7 +236,7 @@ export default function StudentAssignmentsView({ token }) {
       : activeAssignments;
 
   return (
-    <div className="w-full space-y-6 text-left animate-fade-in">
+    <div className="w-full space-y-6 text-left animate-fade-up">
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
@@ -182,10 +249,10 @@ export default function StudentAssignmentsView({ token }) {
             {completedCount} of {totalCount} confirmed
           </p>
         </div>
-        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full progress-track">
           <div
             style={{ width: `${progressPercent}%` }}
-            className="h-full bg-slate-900 rounded-full transition-all"
+            className="progress-fill"
           />
         </div>
       </div>
@@ -476,7 +543,7 @@ export default function StudentAssignmentsView({ token }) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleOpenSubmitModal(asgn)}
+                      onClick={(event) => handleOpenSubmitModal(asgn, event)}
                       className="text-xs font-bold text-slate-600 hover:text-slate-900 underline min-h-10 px-2"
                     >
                       Update submission
@@ -489,7 +556,7 @@ export default function StudentAssignmentsView({ token }) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleOpenSubmitModal(asgn)}
+                      onClick={(event) => handleOpenSubmitModal(asgn, event)}
                       className="btn-secondary py-2 px-3 text-xs min-h-10"
                     >
                       Late Submit
@@ -499,7 +566,7 @@ export default function StudentAssignmentsView({ token }) {
                   <div className="pt-3 border-t border-slate-100">
                     <button
                       type="button"
-                      onClick={() => handleOpenSubmitModal(asgn)}
+                      onClick={(event) => handleOpenSubmitModal(asgn, event)}
                       className="btn-primary w-full py-2.5 text-xs min-h-10 justify-center"
                     >
                       <Send className="w-3.5 h-3.5" /> Submit & Confirm Work
@@ -512,42 +579,50 @@ export default function StudentAssignmentsView({ token }) {
         </div>
       )}
 
-      {/* Submission Confirmation Modal */}
-      {selectedAsgn && (
-        <div className="modal-overlay">
-          <div className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5 text-left animate-fade-in">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+      {selectedAsgn &&
+        createPortal(
+          <div
+            className="submit-popover-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setSelectedAsgn(null);
+            }}
+          >
+            <div
+              className="submit-popover space-y-6 text-left"
+              style={submitPopoverStyle || { visibility: 'hidden' }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
               <div className="min-w-0">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <CheckSquare className="w-5 h-5 text-indigo-600 shrink-0" />
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <CheckSquare className="w-6 h-6 text-indigo-600 shrink-0" />
                   <span>Confirm Assignment Submission</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">"{selectedAsgn.title}"</p>
+                <p className="text-sm text-slate-500 mt-1 truncate">"{selectedAsgn.title}"</p>
               </div>
               <button
                 onClick={() => setSelectedAsgn(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {submitSuccess && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                <CheckCircle className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
                 <span>{submitSuccess}</span>
               </div>
             )}
 
             {submitError && (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
                 <span>{submitError}</span>
               </div>
             )}
 
-            {/* Stepper Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-xs font-bold text-slate-500">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 text-sm font-bold text-slate-500">
               <span className={submitStep === 1 ? 'text-indigo-600 font-extrabold' : ''}>
                 1. Upload Confirmation
               </span>
@@ -558,8 +633,8 @@ export default function StudentAssignmentsView({ token }) {
             </div>
 
             {submitStep === 1 ? (
-              <div className="space-y-4">
-                <p className="text-xs text-slate-600 font-medium">
+              <div className="space-y-5">
+                <p className="text-sm text-slate-600 font-medium">
                   Have you uploaded your assignment files to the teacher's OneDrive folder?
                 </p>
 
@@ -568,38 +643,38 @@ export default function StudentAssignmentsView({ token }) {
                     href={selectedAsgn.onedrive_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 min-h-10 transition-all"
+                    className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 min-h-11 transition-all"
                   >
                     Open OneDrive Folder <ExternalLink className="w-4 h-4" />
                   </a>
                 )}
 
-                <label className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/80 transition-all">
+                <label className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/80 transition-all">
                   <input
                     type="checkbox"
                     checked={hasConfirmedUpload}
                     onChange={(e) => setHasConfirmedUpload(e.target.checked)}
                     className="mt-0.5 text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
                   />
-                  <span className="text-xs font-bold text-slate-800 leading-snug">
+                  <span className="text-sm font-bold text-slate-800 leading-snug">
                     Yes, I have uploaded my completed assignment files to OneDrive.
                   </span>
                 </label>
 
-                <div className="pt-2">
+                <div className="pt-1">
                   <button
                     type="button"
                     onClick={handleProceedToStep2}
-                    className="btn-primary w-full py-2.5 text-xs justify-center min-h-10"
+                    className="btn-primary w-full py-3 text-sm justify-center min-h-11"
                   >
                     Continue to Step 2 →
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
                     OneDrive File / Folder Link (Optional)
                   </label>
                   <input
@@ -607,48 +682,46 @@ export default function StudentAssignmentsView({ token }) {
                     value={submissionLink}
                     onChange={(e) => setSubmissionLink(e.target.value)}
                     placeholder="https://1drv.ms/u/s!..."
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
                     Notes for Professor (Optional)
                   </label>
                   <textarea
-                    rows={2}
+                    rows={4}
                     value={submissionNotes}
                     onChange={(e) => setSubmissionNotes(e.target.value)}
                     placeholder="e.g. Uploaded PDF in team folder under Eleanor_Project.pdf"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
                   />
                 </div>
 
                 {groups.length > 0 && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
                       Associate Submission with Study Group:
                     </label>
-                    <select
+                    <PopoverSelect
                       value={selectedGroupId}
-                      onChange={(e) => setSelectedGroupId(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800"
-                    >
-                      <option value="">No specific group</option>
-                      {groups.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedGroupId}
+                      placeholder="No specific group"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800"
+                      options={[
+                        { value: '', label: 'No specific group' },
+                        ...groups.map((g) => ({ value: String(g.id), label: g.name }))
+                      ]}
+                    />
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-1">
                   <button
                     type="button"
                     onClick={() => setSubmitStep(1)}
-                    className="btn-secondary w-1/3 py-2.5 text-xs justify-center min-h-10"
+                    className="btn-secondary w-1/3 py-3 text-sm justify-center min-h-11"
                   >
                     ← Back
                   </button>
@@ -656,16 +729,17 @@ export default function StudentAssignmentsView({ token }) {
                     type="button"
                     disabled={submitting}
                     onClick={handleFinalConfirmSubmission}
-                    className="btn-primary w-2/3 py-2.5 text-xs justify-center min-h-10"
+                    className="btn-primary w-2/3 py-3 text-sm justify-center min-h-11"
                   >
                     {submitting ? 'Confirming...' : 'Final Confirm & Publish'}
                   </button>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

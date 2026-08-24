@@ -278,16 +278,27 @@ async function query(text, params = []) {
     return { rows: [newUser], rowCount: 1 };
   }
 
-  // UPDATE student details
+  // UPDATE users SET ...
+  // Student profile: name, roll_number, phone_number, id (4 params)
+  // Teacher profile: name, roll_number, phone_number, school, id (5 params)
+  // Legacy: name, school, class_name, roll_number, phone_number, id (6 params)
   if (normalized.match(/^UPDATE users SET/i)) {
-    const name = params[0];
-    const school = params[1];
-    const class_name = params[2];
-    const roll_number = params[3];
-    const phone_number = params[4];
-    const id = parseInt(params[5], 10);
+    let name;
+    let school;
+    let class_name;
+    let roll_number;
+    let phone_number;
+    let id;
 
-    const user = fallbackUsers.find(u => u.id === id);
+    if (params.length === 4) {
+      [name, roll_number, phone_number, id] = params;
+    } else if (params.length === 5) {
+      [name, roll_number, phone_number, school, id] = params;
+    } else {
+      [name, school, class_name, roll_number, phone_number, id] = params;
+    }
+
+    const user = fallbackUsers.find((u) => String(u.id) === String(id));
     if (user) {
       if (name !== undefined) user.name = name;
       if (school !== undefined) user.school = school;

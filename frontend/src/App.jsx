@@ -226,7 +226,7 @@ function App() {
     if (initialChecking) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[55vh] gap-3">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-700 rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
           <p className="text-sm text-slate-500 font-medium">Loading your portal…</p>
         </div>
       );
@@ -270,7 +270,7 @@ function App() {
 
     // Student View: Check if onboarding details are complete
     const isProfileComplete = Boolean(
-      user.school && user.class && user.rollNumber && user.name && user.phone
+      user.name && user.rollNumber && user.phone
     );
 
     if (!isProfileComplete || isEditingProfile) {
@@ -300,7 +300,7 @@ function App() {
   };
 
   return (
-    <div className="app-shell selection:bg-blue-700 selection:text-white">
+    <div className="app-shell selection:bg-slate-900 selection:text-white">
       <Navbar
         user={user}
         onLogout={handleLogout}

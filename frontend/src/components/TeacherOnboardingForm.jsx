@@ -24,7 +24,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto my-4 sm:my-8 animate-fade-in text-left text-slate-800">
+    <div className="w-full max-w-lg mx-auto my-4 sm:my-8 animate-fade-up text-left text-slate-800">
       <div className="classic-card p-5 sm:p-8 bg-white space-y-6">
         <div className="space-y-1">
           <p className="text-sm text-slate-500">Faculty</p>
@@ -58,7 +58,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="e.g. Alan"
-                  className="classic-input pl-11 text-xs font-semibold"
+                  className="classic-input pl-11"
                 />
               </div>
             </div>
@@ -75,7 +75,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="e.g. Turing"
-                  className="classic-input pl-11 text-xs font-semibold"
+                  className="classic-input pl-11"
                 />
               </div>
             </div>
@@ -94,7 +94,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
                 value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 placeholder="e.g. EMP-90210"
-                className="classic-input pl-11 text-xs font-semibold"
+                className="classic-input pl-11"
               />
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. +1 555 999 8888"
-                className="classic-input pl-11 text-xs font-semibold"
+                className="classic-input pl-11"
               />
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
                 value={school}
                 onChange={(e) => setSchool(e.target.value)}
                 placeholder="e.g. Department of Computer Science"
-                className="classic-input pl-11 text-xs font-medium"
+                className="classic-input pl-11"
               />
             </div>
           </div>

@@ -4,17 +4,18 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f6f7f9;
+  background: transparent;
   color: #111827;
 }
 
 .app-footer {
   width: 100%;
   margin-top: auto;
-  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom));
   text-align: center;
   font-size: 0.75rem;
-  color: #9ca3af;
-  border-top: 1px solid #eceef1;
-  background: #ffffff;
+  color: #94a3b8;
+  border-top: 1px solid #eceef2;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
 }

@@ -24,6 +24,7 @@ import {
   Upload,
   UserCheck
 } from 'lucide-react';
+import { DateTimeField } from './AnchoredPopover';
 
 export default function AdminDashboard({ token }) {
   const [activeTab, setActiveTab] = useState('assignments');
@@ -277,7 +278,7 @@ export default function AdminDashboard({ token }) {
   });
 
   return (
-    <div className="w-full space-y-5 animate-fade-in text-left">
+    <div className="w-full space-y-5 animate-fade-up text-left">
       <section className="mb-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="min-w-0">
@@ -823,8 +824,16 @@ export default function AdminDashboard({ token }) {
 
       {/* Create / Edit Assignment Modal */}
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5 text-left animate-fade-in">
+        <div
+          className="modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsModalOpen(false);
+          }}
+        >
+          <div
+            className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5 text-left"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
                 <BookOpen className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -877,10 +886,9 @@ export default function AdminDashboard({ token }) {
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Due Date & Time
                   </label>
-                  <input
-                    type="datetime-local"
+                  <DateTimeField
                     value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
+                    onChange={setDueDate}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
                   />
                 </div>

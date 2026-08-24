@@ -18,7 +18,7 @@ export default function AuthTabs({ onRegister, onLogin, onOpenGoogleModal, loadi
   };
 
   return (
-    <div className="w-full max-w-[400px] mx-auto animate-fade-in">
+    <div className="w-full max-w-[420px] mx-auto animate-fade-up">
       <div className="text-center mb-6">
         <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">
           {activeTab === 'login' ? 'Sign in' : 'Create account'}

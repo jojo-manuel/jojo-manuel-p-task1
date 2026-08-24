@@ -65,7 +65,7 @@ export default function NotificationCenter({
   const unreadCount = notifications.filter((n) => n.status === 'unread').length;
 
   return (
-    <div className="w-full classic-card overflow-hidden animate-fade-in text-left">
+    <div className="w-full classic-card overflow-hidden animate-fade-up text-left">
       <div className="p-4 sm:p-5 border-b border-slate-200 flex items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">

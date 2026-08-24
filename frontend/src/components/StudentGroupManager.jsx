@@ -195,7 +195,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
   };
 
   return (
-    <div className="w-full space-y-6 text-left animate-fade-in">
+    <div className="w-full space-y-6 text-left animate-fade-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Groups</h2>
@@ -465,8 +465,16 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
       </div>
 
       {isCreateModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5">
+        <div
+          className="modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsCreateModalOpen(false);
+          }}
+        >
+          <div
+            className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
                 <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" /> Create group

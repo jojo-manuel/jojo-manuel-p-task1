@@ -23,12 +23,20 @@ export default function GoogleModal({ isOpen, onClose, onGoogleSignIn, role = 's
   };
 
   return (
-    <div className="modal-overlay animate-fade-in">
-      <div className="modal-sheet classic-card p-5 sm:p-8 relative shadow-2xl bg-white text-slate-800">
+    <div
+      className="modal-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="modal-sheet classic-card p-5 sm:p-8 relative shadow-2xl bg-white text-slate-800"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 p-2.5 rounded-lg hover:bg-slate-100 transition-colors min-h-11 min-w-11 flex items-center justify-center"
+          className="absolute top-6 right-3 z-10 text-slate-400 hover:text-slate-700 p-2.5 rounded-lg hover:bg-slate-100 transition-colors min-h-11 min-w-11 flex items-center justify-center"
         >
           <X className="w-5 h-5" />
         </button>
