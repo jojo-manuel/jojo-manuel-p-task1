@@ -451,12 +451,94 @@ export default function AdminDashboard({ token }) {
                 </div>
               </div>
 
-              {/* Group Performance Breakdown */}
+              {/* Faculty Projects & Assignment Group Performance Breakdown */}
+              <div className="classic-card p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
+                <div className="flex items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="truncate">Faculty Projects & Assignment Group Performance</span>
+                  </h3>
+                  <span className="text-xs text-slate-500 font-semibold shrink-0">
+                    {analytics.assignmentPerformance?.length || 0} Projects
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {analytics.assignmentPerformance && analytics.assignmentPerformance.length > 0 ? (
+                    analytics.assignmentPerformance.map((asgn) => (
+                      <div
+                        key={asgn.id}
+                        className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <h4 className="text-base font-extrabold text-slate-900">{asgn.title}</h4>
+                            <span className="text-[11px] font-semibold text-slate-500">
+                              Assigned to: {asgn.assignedToType === 'groups' ? 'Selected Study Groups' : 'All Students'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                              {asgn.overallProjectRate}% Completed
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Overall Progress Bar */}
+                        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 rounded-full transition-all"
+                            style={{ width: `${Math.min(asgn.overallProjectRate, 100)}%` }}
+                          />
+                        </div>
+
+                        {/* Group performance breakdown per assignment */}
+                        {asgn.groupBreakdown && asgn.groupBreakdown.length > 0 && (
+                          <div className="pt-2 border-t border-slate-200/60 space-y-2">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                              Group Submission Progress
+                            </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                              {asgn.groupBreakdown.map((gb) => (
+                                <div
+                                  key={gb.groupId}
+                                  className="p-3 rounded-xl bg-white border border-slate-200 space-y-1.5"
+                                >
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-extrabold text-slate-800 truncate">{gb.groupName}</span>
+                                    <span className="font-bold text-indigo-600">{gb.completionRate}%</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-indigo-600 rounded-full"
+                                      style={{ width: `${gb.completionRate}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
+                                    <span>Submissions: {gb.submissionCount}</span>
+                                    <span>Members: {gb.memberCount}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      No coursework projects published yet. Create an assignment to view group performance analytics.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Overall Group Performance Summary */}
               <div className="classic-card p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
                 <div className="flex items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 min-w-0">
                     <TrendingUp className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span className="truncate">Group performance</span>
+                    <span className="truncate">Overall Group Performance</span>
                   </h3>
                   <span className="text-xs text-slate-500 font-semibold shrink-0">
                     {analytics.groupPerformance?.length || 0} Groups

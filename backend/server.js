@@ -1239,6 +1239,62 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
       })
     );
 
+    // Per-Assignment / Per-Project analytics breakdown for this faculty member
+    const assignmentPerformance = await Promise.all(
+      assignments.map(async (asgn) => {
+        const asgnSubs = submissions.filter((s) => idsMatch(s.assignment_id, asgn.id));
+        const assignedGroupIds = parseAssignedGroupIds(asgn.assigned_group_ids);
+
+        // Determine target groups for this assignment
+        const targetGroups = asgn.assigned_to_type === 'groups' && assignedGroupIds.length > 0
+          ? groups.filter((g) => assignedGroupIds.some((id) => idsMatch(g.id, id)))
+          : groups;
+
+        // Group breakdown for this specific project/assignment
+        const groupBreakdown = await Promise.all(
+          targetGroups.map(async (group) => {
+            const membersRes = await db.query(
+              "SELECT * FROM group_members WHERE group_id = $1 AND (LOWER(status) = 'accepted' OR LOWER(role) = 'creator')",
+              [group.id]
+            );
+            const memberCount = membersRes.rows.length;
+            const groupSubs = asgnSubs.filter((s) => idsMatch(s.group_id, group.id));
+            const subCount = groupSubs.length;
+            const rate = memberCount > 0 ? Math.round((subCount / memberCount) * 100) : (subCount > 0 ? 100 : 0);
+            return {
+              groupId: group.id,
+              groupName: group.name,
+              memberCount,
+              submissionCount: subCount,
+              completionRate: Math.min(rate, 100)
+            };
+          })
+        );
+
+        const totalSubmitted = asgnSubs.length;
+        const totalTargetGroups = targetGroups.length;
+        const totalTargetStudents = groupBreakdown.reduce((acc, gb) => acc + gb.memberCount, 0);
+
+        const overallProjectRate = totalTargetStudents > 0
+          ? Math.round((totalSubmitted / totalTargetStudents) * 100)
+          : (totalSubmitted > 0 ? 100 : 0);
+
+        return {
+          id: asgn.id,
+          title: asgn.title,
+          description: asgn.description,
+          assignedToType: asgn.assigned_to_type,
+          dueDate: asgn.due_date,
+          onedriveLink: asgn.onedrive_link,
+          totalSubmitted,
+          totalTargetGroups,
+          totalTargetStudents,
+          overallProjectRate: Math.min(overallProjectRate, 100),
+          groupBreakdown
+        };
+      })
+    );
+
     // Calculate group performance breakdown strictly for this teacher's assignments
     const groupPerformance = await Promise.all(
       groups.map(async (group) => {
@@ -1277,6 +1333,7 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
         totalSubmissions: submissions.length,
         overallCompletionRate
       },
+      assignmentPerformance,
       groupPerformance,
       recentSubmissions
     });
