@@ -49,6 +49,9 @@ export default function AdminDashboard({ token }) {
   const [onedriveLink, setOnedriveLink] = useState('');
   const [assignedToType, setAssignedToType] = useState('all');
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const [questionPaperUrl, setQuestionPaperUrl] = useState('');
+  const [questionPaperName, setQuestionPaperName] = useState('');
+  const [pdfUploading, setPdfUploading] = useState(false);
   const [savingAsgn, setSavingAsgn] = useState(false);
   const [modalError, setModalError] = useState(null);
 
@@ -133,6 +136,8 @@ export default function AdminDashboard({ token }) {
     setOnedriveLink('');
     setAssignedToType('all');
     setSelectedGroupIds([]);
+    setQuestionPaperUrl('');
+    setQuestionPaperName('');
     setModalError(null);
     setIsModalOpen(true);
   };
@@ -145,6 +150,8 @@ export default function AdminDashboard({ token }) {
     setDueDate(asgn.due_date ? new Date(asgn.due_date).toISOString().slice(0, 16) : '');
     setOnedriveLink(asgn.onedrive_link || '');
     setAssignedToType(asgn.assigned_to_type || 'all');
+    setQuestionPaperUrl(asgn.question_paper_url || '');
+    setQuestionPaperName(asgn.question_paper_name || '');
     try {
       const gIds = typeof asgn.assigned_group_ids === 'string' ? JSON.parse(asgn.assigned_group_ids) : (asgn.assigned_group_ids || []);
       setSelectedGroupIds(gIds);
@@ -153,6 +160,41 @@ export default function AdminDashboard({ token }) {
     }
     setModalError(null);
     setIsModalOpen(true);
+  };
+
+  // PDF File Selection Handler
+  const handlePdfFileSelect = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setModalError('Please select a valid PDF file (.pdf)');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      setModalError('PDF file size must be less than 15MB');
+      return;
+    }
+
+    setPdfUploading(true);
+    setModalError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setQuestionPaperUrl(event.target.result);
+      setQuestionPaperName(file.name);
+      setPdfUploading(false);
+    };
+    reader.onerror = () => {
+      setModalError('Failed to read PDF file');
+      setPdfUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePdf = () => {
+    setQuestionPaperUrl('');
+    setQuestionPaperName('');
   };
 
   // Save assignment (Create / Update)
@@ -178,7 +220,9 @@ export default function AdminDashboard({ token }) {
           dueDate: dueDate || null,
           onedriveLink: onedriveLink.trim() || null,
           assignedToType,
-          assignedGroupIds: selectedGroupIds
+          assignedGroupIds: selectedGroupIds,
+          questionPaperUrl,
+          questionPaperName
         })
       });
       const data = await res.json();
@@ -358,6 +402,27 @@ export default function AdminDashboard({ token }) {
                             className="w-full sm:w-auto justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0 min-h-10"
                           >
                             Open <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Attached Question Paper PDF */}
+                      {asgn.question_paper_url && (
+                        <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="text-xs font-bold text-emerald-950 truncate">
+                              {asgn.question_paper_name || 'Question Paper (PDF)'}
+                            </span>
+                          </div>
+                          <a
+                            href={asgn.question_paper_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={asgn.question_paper_name || 'question_paper.pdf'}
+                            className="w-full sm:w-auto justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0 min-h-10 shadow-sm"
+                          >
+                            View PDF <ExternalLink className="w-3.5 h-3.5" />
                           </a>
                         </div>
                       )}
@@ -814,6 +879,60 @@ export default function AdminDashboard({ token }) {
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
                   />
                 </div>
+              </div>
+
+              {/* Upload Question Paper PDF */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-800">
+                  Question Paper (PDF)
+                </label>
+                {questionPaperUrl ? (
+                  <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="text-xs font-bold text-emerald-900 truncate">
+                        {questionPaperName || 'Question Paper.pdf'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={questionPaperUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline"
+                      >
+                        Preview PDF
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleRemovePdf}
+                        className="p-1 rounded-lg text-rose-600 hover:bg-rose-100 transition-colors text-xs font-bold"
+                        title="Remove PDF"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100/80 hover:border-emerald-400 transition-all">
+                      <div className="flex flex-col items-center justify-center py-2">
+                        <Upload className="w-5 h-5 text-slate-400 mb-1" />
+                        <p className="text-xs font-bold text-slate-700">
+                          {pdfUploading ? 'Reading PDF...' : 'Click to Upload Question Paper (PDF)'}
+                        </p>
+                        <p className="text-[10px] text-slate-400">PDF documents up to 15MB</p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        onChange={handlePdfFileSelect}
+                        disabled={pdfUploading}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Assign Work Target Radio */}

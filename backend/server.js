@@ -924,7 +924,16 @@ app.post('/api/notifications/:id/respond', authenticateToken, async (req, res) =
 // 18. Professor/Admin: Create Assignment Endpoint
 app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { title, description, dueDate, onedriveLink, assignedToType, assignedGroupIds } = req.body;
+    const {
+      title,
+      description,
+      dueDate,
+      onedriveLink,
+      assignedToType,
+      assignedGroupIds,
+      questionPaperUrl,
+      questionPaperName
+    } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ message: 'Assignment title is required' });
@@ -932,7 +941,7 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
 
     const groupIdsJson = JSON.stringify(assignedGroupIds || []);
     const result = await db.query(
-      'INSERT INTO assignments (title, description, due_date, onedrive_link, assigned_to_type, assigned_group_ids, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      'INSERT INTO assignments (title, description, due_date, onedrive_link, assigned_to_type, assigned_group_ids, created_by, question_paper_url, question_paper_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
       [
         title.trim(),
         description ? description.trim() : '',
@@ -940,7 +949,9 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
         onedriveLink ? onedriveLink.trim() : null,
         assignedToType === 'groups' ? 'groups' : 'all',
         groupIdsJson,
-        req.user.id
+        req.user.id,
+        questionPaperUrl ? String(questionPaperUrl).trim() : null,
+        questionPaperName ? String(questionPaperName).trim() : null
       ]
     );
 
@@ -1065,7 +1076,16 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
 app.put('/api/assignments/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
-    const { title, description, dueDate, onedriveLink, assignedToType, assignedGroupIds } = req.body;
+    const {
+      title,
+      description,
+      dueDate,
+      onedriveLink,
+      assignedToType,
+      assignedGroupIds,
+      questionPaperUrl,
+      questionPaperName
+    } = req.body;
 
     const groupIdsJson = JSON.stringify(assignedGroupIds || []);
     const existing = await findAssignmentById(id);
@@ -1078,8 +1098,8 @@ app.put('/api/assignments/:id', authenticateToken, requireAdmin, async (req, res
 
     const result = await db.query(
       `UPDATE assignments
-       SET title = $1, description = $2, due_date = $3, onedrive_link = $4, assigned_to_type = $5, assigned_group_ids = $6, updated_at = CURRENT_TIMESTAMP
-       WHERE CAST(id AS TEXT) = CAST($7 AS TEXT) RETURNING *`,
+       SET title = $1, description = $2, due_date = $3, onedrive_link = $4, assigned_to_type = $5, assigned_group_ids = $6, question_paper_url = $7, question_paper_name = $8, updated_at = CURRENT_TIMESTAMP
+       WHERE CAST(id AS TEXT) = CAST($9 AS TEXT) RETURNING *`,
       [
         title ? title.trim() : '',
         description ? description.trim() : '',
@@ -1087,6 +1107,8 @@ app.put('/api/assignments/:id', authenticateToken, requireAdmin, async (req, res
         onedriveLink ? onedriveLink.trim() : null,
         assignedToType === 'groups' ? 'groups' : 'all',
         groupIdsJson,
+        questionPaperUrl ? String(questionPaperUrl).trim() : null,
+        questionPaperName ? String(questionPaperName).trim() : null,
         existing.id
       ]
     );

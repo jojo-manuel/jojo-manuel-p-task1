@@ -235,6 +235,34 @@ export default function StudentAssignmentsView({ token }) {
                     <p className="text-xs text-slate-600 leading-relaxed font-medium">{asgn.description}</p>
                   )}
 
+                  {/* Official Question Paper PDF */}
+                  {asgn.question_paper_url && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="min-w-0 flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                          📄
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-extrabold text-emerald-950 block truncate">
+                            {asgn.question_paper_name || 'Question Paper (PDF)'}
+                          </span>
+                          <span className="text-[10px] text-emerald-700 font-semibold block">
+                            Official Question Paper PDF
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={asgn.question_paper_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={asgn.question_paper_name || 'question_paper.pdf'}
+                        className="w-full sm:w-auto justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shrink-0 min-h-10 transition-all shadow-sm"
+                      >
+                        <FileText className="w-4 h-4" /> View / Download PDF <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
+
                   {asgn.onedrive_link && (
                     <div className="p-3.5 rounded-2xl bg-indigo-50/80 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div className="min-w-0">

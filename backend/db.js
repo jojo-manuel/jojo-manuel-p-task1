@@ -148,6 +148,8 @@ async function initDb() {
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS onedrive_link VARCHAR(500)",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS assigned_to_type VARCHAR(50) DEFAULT 'all'",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS assigned_group_ids TEXT",
+        "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS question_paper_url TEXT",
+        "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS question_paper_name VARCHAR(255)",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
 
         `CREATE TABLE IF NOT EXISTS notifications (
