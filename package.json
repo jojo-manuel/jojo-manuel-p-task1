@@ -4,16 +4,17 @@
   "description": "Joineazy Full-Stack Student Web Application",
   "main": "backend/server.js",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
     "start": "node backend/server.js",
-    "build": "npm --prefix frontend run build",
-    "backend": "npm --prefix backend start",
-    "frontend": "npm --prefix frontend start",
-    "dev:backend": "npm --prefix backend run dev",
-    "dev:frontend": "npm --prefix frontend run dev"
+    "build": "cd frontend && npm install && npm run build",
+    "vercel-build": "cd frontend && npm install && npm run build"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.0"
   }
 }
