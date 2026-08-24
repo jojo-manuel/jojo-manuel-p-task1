@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { Hash, UserCheck, Phone, ArrowRight } from 'lucide-react';
 
 export default function OnboardingForm({ user, onSubmitDetails, loading, error }) {
+  const splitName = (user?.name || '').trim().split(' ');
+  const initialFirstName = splitName[0] || '';
+  const initialLastName = splitName.slice(1).join(' ') || '';
+
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    firstName: initialFirstName,
+    lastName: initialLastName,
     rollNumber: user?.rollNumber || '',
     phone: user?.phone || ''
   });
@@ -14,7 +19,12 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmitDetails(formData);
+    const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+    onSubmitDetails({
+      name: fullName,
+      rollNumber: formData.rollNumber,
+      phone: formData.phone
+    });
   };
 
   return (
@@ -35,22 +45,42 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
-          {/* Full Name */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Full Name <span className="text-blue-600">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="classic-input pl-11"
-                placeholder="e.g. Eleanor Vance"
-                required
-              />
+          {/* First Name & Last Name */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                First Name <span className="text-blue-600">*</span>
+              </label>
+              <div className="relative flex items-center">
+                <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="classic-input pl-11"
+                  placeholder="e.g. Eleanor"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Last Name <span className="text-blue-600">*</span>
+              </label>
+              <div className="relative flex items-center">
+                <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="classic-input pl-11"
+                  placeholder="e.g. Vance"
+                  required
+                />
+              </div>
             </div>
           </div>
 

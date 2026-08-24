@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
-import { Shield, User, Hash, Phone, School, ArrowRight, AlertTriangle } from 'lucide-react';
+import { User, Hash, Phone, School, ArrowRight, AlertTriangle } from 'lucide-react';
 
 export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, error }) {
-  const [name, setName] = useState(user.name || '');
+  const splitName = (user?.name || '').trim().split(' ');
+  const initialFirstName = splitName[0] || '';
+  const initialLastName = splitName.slice(1).join(' ') || '';
+
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
   const [employeeId, setEmployeeId] = useState(user.employeeId || user.rollNumber || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [school, setSchool] = useState(user.school || '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     onSubmitDetails({
-      name: name.trim(),
+      name: fullName,
       employeeId: employeeId.trim(),
       phone: phone.trim(),
       school: school.trim()
@@ -38,21 +44,40 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Full Name (with Title) <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <User className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Prof. Alan Turing"
-                className="classic-input pl-11 text-xs font-semibold"
-              />
+          {/* First Name & Last Name */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                First Name <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative flex items-center">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
+                <input
+                  type="text"
+                  required
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="e.g. Alan"
+                  className="classic-input pl-11 text-xs font-semibold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Last Name <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative flex items-center">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
+                <input
+                  type="text"
+                  required
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="e.g. Turing"
+                  className="classic-input pl-11 text-xs font-semibold"
+                />
+              </div>
             </div>
           </div>
 
