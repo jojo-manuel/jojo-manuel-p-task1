@@ -27,12 +27,14 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
     <div className="w-full max-w-lg mx-auto my-4 sm:my-8 animate-fade-up text-left text-slate-800">
       <div className="classic-card p-5 sm:p-8 bg-white space-y-6">
         <div className="space-y-1">
-          <p className="text-sm text-slate-500">Faculty</p>
+          <p className="text-sm text-slate-500">Faculty registration</p>
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
             Complete your profile
           </h2>
           <p className="text-sm text-slate-500">
-            Add your details to open the teaching workspace.
+            {user?.email
+              ? `Signed in as ${user.email}. Add your employee ID and department to finish registration.`
+              : 'Add your details to open the teaching workspace.'}
           </p>
         </div>
 

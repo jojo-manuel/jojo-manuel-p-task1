@@ -22,10 +22,12 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
     <div className="w-full max-w-xl mx-auto my-4 sm:my-8 animate-fade-up text-slate-800">
       <div className="classic-card p-5 sm:p-8 bg-white">
         <div className="mb-6">
-          <p className="text-sm text-slate-500 mb-1">Step 2 of 2</p>
-          <h2 className="text-xl font-semibold text-slate-900">Student details</h2>
+          <p className="text-sm text-slate-500 mb-1">Student registration</p>
+          <h2 className="text-xl font-semibold text-slate-900">Complete your details</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Complete your profile details so faculty and study group members can identify you.
+            {user?.email
+              ? `Signed in as ${user.email}. Add your roll number and phone to finish registration.`
+              : 'Complete your profile details so faculty and study group members can identify you.'}
           </p>
         </div>
 

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
 const db = require('./db');
@@ -9,6 +10,43 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'joineazy_super_secret_jwt_key_2026';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '448067617911-7q1pc33opl9bgbafh7mggqoo4vpjqio3.apps.googleusercontent.com';
+const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+async function verifyGoogleIdToken(idToken) {
+  const ticket = await googleAuthClient.verifyIdToken({
+    idToken,
+    audience: GOOGLE_CLIENT_ID
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.email) {
+    throw new Error('Google account did not return an email address');
+  }
+  return {
+    email: String(payload.email).toLowerCase(),
+    name: payload.name || '',
+    googleId: payload.sub,
+    emailVerified: Boolean(payload.email_verified)
+  };
+}
+
+async function issueAuthResponse(user, message, status = 200) {
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role || 'student' },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  return {
+    status,
+    body: {
+      message,
+      isNewUser: false,
+      token,
+      user: formatUserResponse(user)
+    }
+  };
+}
 
 // Middleware
 app.use(cors());
@@ -220,6 +258,7 @@ function formatUserResponse(user) {
     rollNumber: user.roll_number || user.rollNumber || user.student_id || null,
     employeeId: empId,
     phone: user.phone_number || user.phone || null,
+    school: user.school || null,
     isProfileComplete: isComplete,
     createdAt: user.created_at
   };
@@ -345,44 +384,67 @@ app.post('/api/auth/login', async (req, res) => {
 // 5. Google Sign In Endpoint
 app.post('/api/auth/google', async (req, res) => {
   try {
-    const { email, name, googleId, role } = req.body;
+    const { idToken, role } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ message: 'Google account email is required' });
+    if (!idToken) {
+      return res.status(400).json({ message: 'Google sign-in token is required' });
     }
 
-    // Check if user exists
-    let result = await db.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
-    let user;
+    let profile;
+    try {
+      profile = await verifyGoogleIdToken(idToken);
+    } catch (err) {
+      console.error('Google token verification failed:', err.message);
+      return res.status(401).json({
+        message: 'Google sign-in could not be verified. Add this site as an Authorized JavaScript origin in Google Cloud Console.'
+      });
+    }
+
+    if (!profile.emailVerified) {
+      return res.status(400).json({ message: 'Please use a verified Google account' });
+    }
+
+    let result = await db.query('SELECT * FROM users WHERE email = $1', [profile.email]);
+    if (result.rows.length === 0) {
+      result = await db.query('SELECT * FROM users WHERE google_id = $1', [profile.googleId]);
+    }
 
     if (result.rows.length === 0) {
-      // Create user via Google
-      const randomPassword = Math.random().toString(36).slice(-10) + 'A1!';
+      if (!role) {
+        return res.json({
+          isNewUser: true,
+          profile: {
+            email: profile.email,
+            name: profile.name
+          }
+        });
+      }
+
+      const userRole = role === 'admin' ? 'admin' : 'student';
+      const randomPassword = `${Math.random().toString(36).slice(-10)}A1!`;
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(randomPassword, salt);
-      const userRole = role === 'admin' ? 'admin' : 'student';
 
       const insertResult = await db.query(
         'INSERT INTO users (email, password_hash, role, name, school, class_name, roll_number, phone_number, google_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-        [email.toLowerCase(), passwordHash, userRole, name || null, null, null, null, null, googleId || 'google-oauth']
+        [profile.email, passwordHash, userRole, profile.name || null, null, null, null, null, profile.googleId]
       );
-      user = insertResult.rows[0];
-    } else {
-      user = result.rows[0];
+
+      const created = await issueAuthResponse(insertResult.rows[0], 'Google registration successful!', 201);
+      return res.status(created.status).json(created.body);
     }
 
-    // Issue JWT Token
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role || 'student' },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const user = result.rows[0];
+    if (!user.google_id) {
+      await db.query(
+        'UPDATE users SET google_id = $1 WHERE id = $2 RETURNING *',
+        [profile.googleId, user.id]
+      );
+      user.google_id = profile.googleId;
+    }
 
-    res.json({
-      message: 'Google Sign-In successful!',
-      token,
-      user: formatUserResponse(user)
-    });
+    const signedIn = await issueAuthResponse(user, 'Google Sign-In successful!');
+    return res.status(signedIn.status).json(signedIn.body);
   } catch (error) {
     console.error('Google Auth Error:', error);
     res.status(500).json({ message: 'Google authentication failed' });

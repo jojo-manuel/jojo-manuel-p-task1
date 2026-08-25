@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Lock, ArrowRight, CheckCircle2, AlertTriangle, GraduationCap, Briefcase } from 'lucide-react';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
+import GoogleSignInButton from './GoogleSignInButton';
 
-export default function AuthTabs({ onRegister, onLogin, onOpenGoogleModal, loading, error, successMessage }) {
+export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, loading, error, successMessage }) {
   const [activeTab, setActiveTab] = useState('login');
   const [registerRole, setRegisterRole] = useState('student');
   const [email, setEmail] = useState('');
@@ -50,15 +51,7 @@ export default function AuthTabs({ onRegister, onLogin, onOpenGoogleModal, loadi
           </button>
         </div>
 
-        <button type="button" onClick={() => onOpenGoogleModal(registerRole)} className="btn-google mb-5">
-          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.6c-.29 1.48-1.14 2.73-2.4 3.58v2.99h3.88c2.27-2.09 3.665-5.17 3.665-8.81z" />
-            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-2.99c-1.08.72-2.45 1.15-4.05 1.15-3.12 0-5.77-2.11-6.72-4.94H1.29v3.09C3.26 21.3 7.31 24 12 24z" />
-            <path fill="#FBBC05" d="M5.28 14.31c-.25-.72-.38-1.49-.38-2.31s.13-1.59.38-2.31V6.6H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.4l3.99-3.09z" />
-            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8L20.02 3.1C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.6l3.99 3.09C6.23 6.86 8.88 4.75 12 4.75z" />
-          </svg>
-          Continue with Google
-        </button>
+        <GoogleSignInButton onCredential={onGoogleCredential} disabled={loading} />
 
         <div className="relative mb-5">
           <div className="border-t border-slate-200" />

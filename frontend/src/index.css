@@ -185,6 +185,23 @@
   color: #111827;
 }
 
+.google-btn-host {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.google-btn-slot {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.google-btn-slot iframe {
+  margin: 0 auto;
+}
+
 .btn-google,
 .btn-google {
   background: #ffffff;

@@ -83,6 +83,9 @@ if (connectionString) {
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 30000
   });
+  pool.on('error', (err) => {
+    console.warn('PostgreSQL idle client error (reconnecting on next query):', err.message);
+  });
 } else {
   console.log('No DATABASE_URL set. Initializing file-backed local DB engine...');
   useFallbackDb = true;
@@ -225,6 +228,13 @@ async function query(text, params = []) {
     return { rows: user ? [user] : [], rowCount: user ? 1 : 0 };
   }
 
+  // SELECT user by Google ID
+  if (normalized.match(/^SELECT \* FROM users WHERE google_id = \$1/i)) {
+    const googleId = params[0];
+    const user = fallbackUsers.find((u) => u.google_id && String(u.google_id) === String(googleId));
+    return { rows: user ? [user] : [], rowCount: user ? 1 : 0 };
+  }
+
   // SELECT user by id
   if (normalized.match(/^SELECT \* FROM users WHERE id = \$1/i)) {
     const user = fallbackUsers.find(u => fallbackIdsMatch(u.id, params[0]));
@@ -276,6 +286,19 @@ async function query(text, params = []) {
     fallbackUsers.push(newUser);
     saveFallbackData();
     return { rows: [newUser], rowCount: 1 };
+  }
+
+  // UPDATE users SET google_id
+  if (normalized.match(/^UPDATE users SET google_id/i)) {
+    const [googleId, id] = params;
+    const user = fallbackUsers.find((u) => String(u.id) === String(id));
+    if (user) {
+      user.google_id = googleId;
+      user.updated_at = new Date().toISOString();
+      saveFallbackData();
+      return { rows: [user], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
   }
 
   // UPDATE users SET ...

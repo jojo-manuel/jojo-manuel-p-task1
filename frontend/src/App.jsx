@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import AuthTabs from './components/AuthTabs';
-import GoogleModal from './components/GoogleModal';
+import GoogleRolePicker from './components/GoogleRolePicker';
 import OnboardingForm from './components/OnboardingForm';
 import TeacherOnboardingForm from './components/TeacherOnboardingForm';
 import StudentDashboard from './components/StudentDashboard';
@@ -15,8 +15,7 @@ function App() {
   const [initialChecking, setInitialChecking] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
-  const [googleRole, setGoogleRole] = useState('student');
+  const [pendingGoogle, setPendingGoogle] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Notification State
@@ -129,8 +128,7 @@ function App() {
     }
   };
 
-  const handleGoogleSignIn = async ({ email, name, googleId, role }) => {
-    setIsGoogleModalOpen(false);
+  const handleGoogleCredential = async (idToken, role) => {
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
@@ -138,17 +136,27 @@ function App() {
       const res = await fetch('/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, googleId, role })
+        body: JSON.stringify({ idToken, role })
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || 'Google authentication failed');
       }
 
+      if (data.isNewUser) {
+        setPendingGoogle({
+          idToken,
+          email: data.profile?.email,
+          name: data.profile?.name
+        });
+        return;
+      }
+
+      setPendingGoogle(null);
       setToken(data.token);
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
-      setSuccessMessage('Signed in with Google!');
+      setSuccessMessage(data.message || 'Signed in with Google!');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -214,6 +222,7 @@ function App() {
     setUser(null);
     setToken(null);
     localStorage.removeItem('joineazy_token');
+    setPendingGoogle(null);
     setIsEditingProfile(false);
     setError(null);
     setSuccessMessage(null);
@@ -233,14 +242,26 @@ function App() {
     }
 
     if (!user) {
+      if (pendingGoogle) {
+        return (
+          <GoogleRolePicker
+            profile={pendingGoogle}
+            onSelectRole={(role) => handleGoogleCredential(pendingGoogle.idToken, role)}
+            onBack={() => {
+              setPendingGoogle(null);
+              setError(null);
+            }}
+            loading={loading}
+            error={error}
+          />
+        );
+      }
+
       return (
         <AuthTabs
           onRegister={handleRegister}
           onLogin={handleLogin}
-          onOpenGoogleModal={(r) => {
-            setGoogleRole(r);
-            setIsGoogleModalOpen(true);
-          }}
+          onGoogleCredential={(idToken) => handleGoogleCredential(idToken)}
           loading={loading}
           error={error}
           successMessage={successMessage}
@@ -312,13 +333,6 @@ function App() {
       <main className={`flex-1 w-full max-w-6xl mx-auto min-w-0 ${user ? 'app-main-app' : 'app-main-auth'}`}>
         {renderCurrentView()}
       </main>
-
-      <GoogleModal
-        isOpen={isGoogleModalOpen}
-        onClose={() => setIsGoogleModalOpen(false)}
-        onGoogleSignIn={handleGoogleSignIn}
-        role={googleRole}
-      />
 
       <footer className="app-footer">
         <p>Joineazy</p>
