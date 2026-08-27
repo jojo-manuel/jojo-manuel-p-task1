@@ -8,6 +8,21 @@ import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import './App.css';
 
+async function safeParseJson(res) {
+  const text = await res.text();
+  if (!text || !text.trim()) {
+    return {};
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    if (!res.ok) {
+      throw new Error(text || `Server error (${res.status})`);
+    }
+    throw new Error(`Server returned non-JSON response (${res.status}): ${text.slice(0, 80)}`);
+  }
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('joineazy_token') || null);
@@ -48,7 +63,7 @@ function App() {
       const res = await fetch('/api/notifications', {
         headers: { Authorization: `Bearer ${authToken}` }
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (res.ok && data.notifications) {
         setNotifications(data.notifications);
         setUnreadCount(data.unreadCount || 0);
@@ -63,7 +78,7 @@ function App() {
       const res = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${authToken}` }
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (res.ok && data.user) {
         setUser(data.user);
       } else {
@@ -86,7 +101,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, role })
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(data.message || (data.errors ? data.errors.join('. ') : 'Registration failed'));
       }
@@ -112,7 +127,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(data.message || 'Login failed');
       }
@@ -138,7 +153,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken, role })
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(data.message || 'Google authentication failed');
       }
@@ -176,7 +191,7 @@ function App() {
         },
         body: JSON.stringify(details)
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(data.message || 'Failed to save teacher details');
       }
@@ -203,7 +218,7 @@ function App() {
         },
         body: JSON.stringify(details)
       });
-      const data = await res.json();
+      const data = await safeParseJson(res);
       if (!res.ok) {
         throw new Error(data.message || 'Failed to save student details');
       }

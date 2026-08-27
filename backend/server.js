@@ -1693,6 +1693,18 @@ app.post('/api/courses', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// 25. Fallback 404 Route & Global JSON Error Handler
+app.use('/api', (req, res, next) => {
+  res.status(404).json({ message: `API route not found: ${req.method} ${req.originalUrl}` });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled Express Error:', err);
+  res.status(err.status || 500).json({
+    message: err.message || 'A server error occurred'
+  });
+});
+
 // Export Express App for Vercel Serverless Function & local start
 if (require.main === module) {
   app.listen(PORT, () => {
