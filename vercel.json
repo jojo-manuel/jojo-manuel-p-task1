@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && npm install --include=dev && npx vite build",
+  "buildCommand": "npm install && cd frontend && npm install --include=dev && npx vite build",
   "outputDirectory": "frontend/dist",
   "framework": null,
   "headers": [

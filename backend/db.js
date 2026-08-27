@@ -32,8 +32,16 @@ let nextSubmissionId = 1;
 
 function loadFallbackData() {
   try {
-    if (fs.existsSync(fallbackDataPath)) {
-      const content = fs.readFileSync(fallbackDataPath, 'utf8');
+    let sourcePath = fallbackDataPath;
+    if (!fs.existsSync(sourcePath)) {
+      const seedPath = path.join(__dirname, 'data_fallback.json');
+      if (fs.existsSync(seedPath)) {
+        sourcePath = seedPath;
+      }
+    }
+
+    if (fs.existsSync(sourcePath)) {
+      const content = fs.readFileSync(sourcePath, 'utf8');
       const parsed = JSON.parse(content);
       fallbackUsers = parsed.users || [];
       fallbackGroups = parsed.groups || [];
@@ -41,13 +49,24 @@ function loadFallbackData() {
       fallbackNotifications = parsed.notifications || [];
       fallbackAssignments = parsed.assignments || [];
       fallbackSubmissions = parsed.submissions || [];
-      
-      nextUserId = parsed.nextUserId || (fallbackUsers.length > 0 ? Math.max(...fallbackUsers.map(u => u.id)) + 1 : 1);
-      nextGroupId = parsed.nextGroupId || (fallbackGroups.length > 0 ? Math.max(...fallbackGroups.map(g => g.id)) + 1 : 1);
-      nextMemberId = parsed.nextMemberId || (fallbackGroupMembers.length > 0 ? Math.max(...fallbackGroupMembers.map(m => m.id)) + 1 : 1);
-      nextNotificationId = parsed.nextNotificationId || (fallbackNotifications.length > 0 ? Math.max(...fallbackNotifications.map(n => n.id)) + 1 : 1);
-      nextAssignmentId = parsed.nextAssignmentId || (fallbackAssignments.length > 0 ? Math.max(...fallbackAssignments.map(a => a.id)) + 1 : 1);
-      nextSubmissionId = parsed.nextSubmissionId || (fallbackSubmissions.length > 0 ? Math.max(...fallbackSubmissions.map(s => s.id)) + 1 : 1);
+
+      const getNextId = (list, explicitNext) => {
+        if (explicitNext && typeof explicitNext === 'number' && !isNaN(explicitNext)) {
+          return explicitNext;
+        }
+        if (!Array.isArray(list) || list.length === 0) return 1;
+        const numericIds = list
+          .map((item) => (typeof item.id === 'number' ? item.id : parseInt(item.id, 10)))
+          .filter((val) => typeof val === 'number' && !isNaN(val));
+        return numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
+      };
+
+      nextUserId = getNextId(fallbackUsers, parsed.nextUserId);
+      nextGroupId = getNextId(fallbackGroups, parsed.nextGroupId);
+      nextMemberId = getNextId(fallbackGroupMembers, parsed.nextMemberId);
+      nextNotificationId = getNextId(fallbackNotifications, parsed.nextNotificationId);
+      nextAssignmentId = getNextId(fallbackAssignments, parsed.nextAssignmentId);
+      nextSubmissionId = getNextId(fallbackSubmissions, parsed.nextSubmissionId);
     }
   } catch (err) {
     console.error('Error loading fallback data:', err.message);
@@ -56,24 +75,21 @@ function loadFallbackData() {
 
 function saveFallbackData() {
   try {
-    fs.writeFileSync(
-      fallbackDataPath,
-      JSON.stringify({
-        users: fallbackUsers,
-        groups: fallbackGroups,
-        groupMembers: fallbackGroupMembers,
-        notifications: fallbackNotifications,
-        assignments: fallbackAssignments,
-        submissions: fallbackSubmissions,
-        nextUserId,
-        nextGroupId,
-        nextMemberId,
-        nextNotificationId,
-        nextAssignmentId,
-        nextSubmissionId
-      }, null, 2),
-      'utf8'
-    );
+    const data = {
+      users: fallbackUsers,
+      groups: fallbackGroups,
+      groupMembers: fallbackGroupMembers,
+      notifications: fallbackNotifications,
+      assignments: fallbackAssignments,
+      submissions: fallbackSubmissions,
+      nextUserId,
+      nextGroupId,
+      nextMemberId,
+      nextNotificationId,
+      nextAssignmentId,
+      nextSubmissionId
+    };
+    fs.writeFileSync(fallbackDataPath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
     console.error('Error saving fallback data:', err.message);
   }
