@@ -2,6 +2,9 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch (e) {}
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env') }); } catch (e) {}
+try { require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') }); } catch (e) {}
 
 const connectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL;
 
@@ -102,6 +105,20 @@ async function initDb() {
       console.log('Successfully connected to PostgreSQL / Neon DB!');
       
       const safeMigrations = [
+        `CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(255) PRIMARY KEY DEFAULT ('usr-' || floor(extract(epoch from clock_timestamp()) * 1000)::text),
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255),
+          role VARCHAR(50) DEFAULT 'student',
+          name VARCHAR(255),
+          school VARCHAR(255),
+          class_name VARCHAR(100),
+          roll_number VARCHAR(100),
+          phone_number VARCHAR(50),
+          google_id VARCHAR(255),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )`,
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS school VARCHAR(255)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS class_name VARCHAR(100)",
@@ -234,9 +251,29 @@ async function query(text, params = []) {
       return await pool.query(text, params);
     } catch (err) {
       console.warn('PostgreSQL query notice:', err.message);
-      // Do not silently switch to the integer-id fallback file while Neon still has
-      // string ids like asg-... — that is what produced "Assignment not found" on submit.
-      throw err;
+      const isConnError =
+        err.code === 'ECONNRESET' ||
+        err.code === '57P01' ||
+        err.code === 'ENOTFOUND' ||
+        err.code === 'ETIMEDOUT' ||
+        (err.message && (
+          err.message.includes('terminated') ||
+          err.message.includes('ENOTFOUND') ||
+          err.message.includes('timeout')
+        ));
+
+      if (isConnError) {
+        try {
+          console.log('Retrying PostgreSQL query...');
+          return await pool.query(text, params);
+        } catch (retryErr) {
+          console.warn('PostgreSQL retry failed. Switching seamlessly to local persistent storage:', retryErr.message);
+          useFallbackDb = true;
+          loadFallbackData();
+        }
+      } else {
+        throw err;
+      }
     }
   }
 

@@ -51,6 +51,12 @@ export default function GoogleSignInButton({ onCredential, disabled = false }) {
               onCredentialRef.current(response.credential);
             }
           },
+          error_callback: (err) => {
+            console.warn('Google Identity Services notice:', err);
+            if (!cancelled) {
+              setLoadError(`Domain origin ${window.location.origin} is not allowed for Client ID (${GOOGLE_CLIENT_ID.slice(0, 16)}...). Add this origin in Google Cloud Console.`);
+            }
+          },
           auto_select: false,
           cancel_on_tap_outside: true,
           ux_mode: 'popup'
@@ -82,8 +88,13 @@ export default function GoogleSignInButton({ onCredential, disabled = false }) {
 
   if (loadError) {
     return (
-      <div className="mb-4 text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-center font-medium">
-        Google Sign-In is unavailable for this domain ({window.location.origin}). Please sign in with email below.
+      <div className="mb-4 text-xs text-amber-800 bg-amber-50/90 p-3 rounded-xl border border-amber-200 text-left font-medium leading-relaxed shadow-sm">
+        <div className="font-semibold text-amber-900 mb-1 flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          Google Sign-In Setup Notice
+        </div>
+        <p className="text-amber-700">{loadError}</p>
+        <p className="mt-1 text-[11px] text-amber-600">You can create an account or sign in with your email & password below.</p>
       </div>
     );
   }
