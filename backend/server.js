@@ -336,7 +336,7 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Registration Error:', error);
-    res.status(500).json({ message: 'Internal server error during registration' });
+    res.status(500).json({ message: error.message || 'Internal server error during registration' });
   }
 });
 

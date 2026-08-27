@@ -82,7 +82,9 @@ export default function GoogleSignInButton({ onCredential, disabled = false }) {
 
   if (loadError) {
     return (
-      <p className="mb-5 text-sm text-rose-600 text-center">{loadError}</p>
+      <div className="mb-4 text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-center font-medium">
+        Google Sign-In is unavailable for this domain ({window.location.origin}). Please sign in with email below.
+      </div>
     );
   }
 
