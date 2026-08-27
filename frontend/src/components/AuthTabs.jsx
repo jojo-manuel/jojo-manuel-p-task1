@@ -151,6 +151,31 @@ export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, load
             )}
           </button>
         </form>
+
+        {/* 1-Click Quick Demo Sign-In */}
+        <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
+            Or Quick Demo Sign-In
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => onLogin({ email: 'student@school.edu', password: 'Password123!' })}
+              className="py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 flex items-center justify-center gap-1 transition-all"
+            >
+              <GraduationCap className="w-3.5 h-3.5" /> Demo Student
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => onLogin({ email: 'professor@school.edu', password: 'Password123!' })}
+              className="py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200 flex items-center justify-center gap-1 transition-all"
+            >
+              <Briefcase className="w-3.5 h-3.5" /> Demo Faculty
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
