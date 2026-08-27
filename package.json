@@ -10,7 +10,7 @@
     "vercel-build": "npm install && npm --prefix frontend install --include=dev && npm --prefix frontend run build"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
