@@ -9,7 +9,10 @@ let pool = null;
 let useFallbackDb = false;
 
 // Fallback in-memory/file storage if PostgreSQL connection is not provided or fails
-const fallbackDataPath = path.join(__dirname, 'data_fallback.json');
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production');
+const fallbackDataPath = isServerless
+  ? path.join('/tmp', 'data_fallback.json')
+  : path.join(__dirname, 'data_fallback.json');
 let fallbackUsers = [];
 let fallbackGroups = [];
 let fallbackGroupMembers = [];
