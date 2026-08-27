@@ -987,6 +987,7 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
     const {
       title,
       description,
+      courseName,
       dueDate,
       onedriveLink,
       assignedToType,
@@ -1004,11 +1005,14 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
     }
 
     const groupIdsJson = JSON.stringify(assignedGroupIds || []);
+    const resolvedCourseName = courseName && courseName.trim() ? courseName.trim() : 'General Coursework';
+
     const result = await db.query(
-      'INSERT INTO assignments (title, description, due_date, onedrive_link, assigned_to_type, assigned_group_ids, created_by, question_paper_url, question_paper_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      'INSERT INTO assignments (title, description, course_name, due_date, onedrive_link, assigned_to_type, assigned_group_ids, created_by, question_paper_url, question_paper_name) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
       [
         title.trim(),
         description ? description.trim() : '',
+        resolvedCourseName,
         dueDate || null,
         onedriveLink ? onedriveLink.trim() : null,
         assignedToType === 'groups' ? 'groups' : 'all',
@@ -1049,7 +1053,7 @@ app.post('/api/assignments', authenticateToken, requireAdmin, async (req, res) =
             req.user.id,
             'assignment_notice',
             'New Coursework Assignment',
-            `Professor posted a new assignment: "${newAssignment.title}". Check Coursework section.`,
+            `Professor posted a new assignment in "${resolvedCourseName}": "${newAssignment.title}".`,
             'unread',
             'none'
           ]
@@ -1103,11 +1107,53 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
           const teacher = teacherRes.rows[0] || {};
           const teacherName = teacher.name || teacher.email || 'Faculty Member';
 
+          let userGroupRole = 'individual';
+          let groupLeaderName = null;
+          let groupName = null;
+          let targetGroupId = null;
+
+          if (asgn.assigned_to_type === 'groups') {
+            const assignedIds = parseAssignedGroupIds(asgn.assigned_group_ids);
+            targetGroupId = assignedIds.find((gId) => userGroupIds.some((u) => idsMatch(u, gId))) || userGroupIds[0] || null;
+
+            if (targetGroupId) {
+              const groupRes = await db.query('SELECT * FROM groups WHERE id = $1', [targetGroupId]);
+              if (groupRes.rows[0]) groupName = groupRes.rows[0].name;
+
+              // Check user role in group
+              const myMemberRes = await db.query(
+                "SELECT * FROM group_members WHERE CAST(group_id AS TEXT) = CAST($1 AS TEXT) AND CAST(user_id AS TEXT) = CAST($2 AS TEXT) AND (status = 'accepted' OR role = 'creator')",
+                [targetGroupId, req.user.id]
+              );
+              const myRole = myMemberRes.rows[0] ? (myMemberRes.rows[0].role || 'member') : 'member';
+              userGroupRole = (myRole === 'creator' || myRole === 'leader') ? 'leader' : 'member';
+
+              // Find group leader user name
+              const leaderRes = await db.query(
+                "SELECT u.name, u.email FROM group_members gm JOIN users u ON CAST(u.id AS TEXT) = CAST(gm.user_id AS TEXT) WHERE CAST(gm.group_id AS TEXT) = CAST($1 AS TEXT) AND (gm.role = 'creator' OR gm.role = 'leader') LIMIT 1",
+                [targetGroupId]
+              );
+              if (leaderRes.rows[0]) {
+                groupLeaderName = leaderRes.rows[0].name || leaderRes.rows[0].email;
+              }
+            }
+          }
+
           const subRes = await db.query(
             'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(student_id AS TEXT) = CAST($2 AS TEXT)',
             [asgn.id, req.user.id]
           );
-          const userSub = subRes.rows[0] || null;
+          let userSub = subRes.rows[0] || null;
+
+          if (!userSub && targetGroupId) {
+            const groupSubRes = await db.query(
+              'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(group_id AS TEXT) = CAST($2 AS TEXT) LIMIT 1',
+              [asgn.id, targetGroupId]
+            );
+            if (groupSubRes.rows[0]) {
+              userSub = groupSubRes.rows[0];
+            }
+          }
 
           const assignedIds = parseAssignedGroupIds(asgn.assigned_group_ids);
           const progressGroupIds = asgn.assigned_to_type === 'groups'
@@ -1127,6 +1173,11 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
           return {
             ...asgn,
             teacher_name: teacherName,
+            submissionType: asgn.assigned_to_type === 'groups' ? 'Group Assignment' : 'Individual Assignment',
+            userGroupRole,
+            groupLeaderName,
+            groupName,
+            targetGroupId,
             isSubmitted: Boolean(userSub),
             submission: userSub,
             groupProgress
@@ -1238,31 +1289,86 @@ app.post('/api/assignments/:id/submit', authenticateToken, async (req, res) => {
     }
 
     const resolvedId = assignment.id;
-    const linkValue = String(body.submissionLink || body.submissionLink || '').trim() || null;
-    const notesValue = String(body.submissionNotes || body.submissionNotes || '').trim() || null;
-    const resolvedGroupId = body.groupId || null;
+    const linkValue = String(body.submissionLink || '').trim() || null;
+    const notesValue = String(body.submissionNotes || '').trim() || null;
+    const userGroupIds = await getAcceptedGroupIds(req.user.id);
+    const assignedGroupIds = parseAssignedGroupIds(assignment.assigned_group_ids);
+    const resolvedGroupId = body.groupId || assignedGroupIds.find((gId) => userGroupIds.some((u) => idsMatch(u, gId))) || userGroupIds[0] || null;
 
-    const existingSub = await db.query(
-      'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(student_id AS TEXT) = CAST($2 AS TEXT)',
-      [resolvedId, req.user.id]
-    );
+    // Group Leader enforcement for group assignments
+    if (assignment.assigned_to_type === 'groups') {
+      if (!resolvedGroupId) {
+        return res.status(400).json({ message: 'You must belong to a target study group to submit this assignment.' });
+      }
 
-    let submission;
-
-    if (existingSub.rows.length > 0) {
-      const upd = await db.query(
-        `UPDATE assignment_submissions
-         SET group_id = $1, status = $2, submission_link = $3, submission_notes = $4, submitted_at = CURRENT_TIMESTAMP
-         WHERE CAST(assignment_id AS TEXT) = CAST($5 AS TEXT) AND CAST(student_id AS TEXT) = CAST($6 AS TEXT) RETURNING *`,
-        [resolvedGroupId || existingSub.rows[0].group_id, 'confirmed', linkValue, notesValue, resolvedId, req.user.id]
+      // Query student's role in the group
+      const myMemberRes = await db.query(
+        `SELECT gm.*, g.name as group_name FROM group_members gm
+         JOIN groups g ON CAST(g.id AS TEXT) = CAST(gm.group_id AS TEXT)
+         WHERE CAST(gm.group_id AS TEXT) = CAST($1 AS TEXT)
+           AND CAST(gm.user_id AS TEXT) = CAST($2 AS TEXT)
+           AND (gm.status = 'accepted' OR gm.role = 'creator')`,
+        [resolvedGroupId, req.user.id]
       );
-      submission = upd.rows[0];
-    } else {
-      const subRes = await db.query(
-        'INSERT INTO assignment_submissions (assignment_id, student_id, group_id, status, submission_link, submission_notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [resolvedId, req.user.id, resolvedGroupId, 'confirmed', linkValue, notesValue]
+
+      const memberRow = myMemberRes.rows[0];
+      const isLeader = memberRow && (memberRow.role === 'creator' || memberRow.role === 'leader');
+
+      if (!isLeader) {
+        // Fetch leader name for friendly error message
+        const leaderRes = await db.query(
+          `SELECT u.name, u.email FROM group_members gm
+           JOIN users u ON CAST(u.id AS TEXT) = CAST(gm.user_id AS TEXT)
+           WHERE CAST(gm.group_id AS TEXT) = CAST($1 AS TEXT)
+             AND (gm.role = 'creator' OR gm.role = 'leader') LIMIT 1`,
+          [resolvedGroupId]
+        );
+        const leaderName = (leaderRes.rows[0] && (leaderRes.rows[0].name || leaderRes.rows[0].email)) || 'Group Leader';
+        const groupName = (memberRow && memberRow.group_name) || 'this study group';
+
+        return res.status(403).json({
+          message: `Only the Group Leader (${leaderName}) of "${groupName}" can confirm submission for group assignments.`
+        });
+      }
+    }
+
+    // Process submission for student (and for all group members if group assignment)
+    let targetStudentIds = [req.user.id];
+    if (assignment.assigned_to_type === 'groups' && resolvedGroupId) {
+      const allMembersRes = await db.query(
+        `SELECT user_id FROM group_members
+         WHERE CAST(group_id AS TEXT) = CAST($1 AS TEXT)
+           AND (status = 'accepted' OR role = 'creator')`,
+        [resolvedGroupId]
       );
-      submission = subRes.rows[0];
+      targetStudentIds = allMembersRes.rows.map(m => m.user_id);
+      if (!targetStudentIds.some(id => idsMatch(id, req.user.id))) {
+        targetStudentIds.push(req.user.id);
+      }
+    }
+
+    let primarySubmission;
+    for (const sid of targetStudentIds) {
+      const existingSub = await db.query(
+        'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT) AND CAST(student_id AS TEXT) = CAST($2 AS TEXT)',
+        [resolvedId, sid]
+      );
+
+      if (existingSub.rows.length > 0) {
+        const upd = await db.query(
+          `UPDATE assignment_submissions
+           SET group_id = $1, status = $2, submission_link = $3, submission_notes = $4, submitted_at = CURRENT_TIMESTAMP
+           WHERE CAST(assignment_id AS TEXT) = CAST($5 AS TEXT) AND CAST(student_id AS TEXT) = CAST($6 AS TEXT) RETURNING *`,
+          [resolvedGroupId || existingSub.rows[0].group_id, 'confirmed', linkValue, notesValue, resolvedId, sid]
+        );
+        if (idsMatch(sid, req.user.id)) primarySubmission = upd.rows[0];
+      } else {
+        const subRes = await db.query(
+          'INSERT INTO assignment_submissions (assignment_id, student_id, group_id, status, submission_link, submission_notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+          [resolvedId, sid, resolvedGroupId, 'confirmed', linkValue, notesValue]
+        );
+        if (idsMatch(sid, req.user.id)) primarySubmission = subRes.rows[0];
+      }
     }
 
     // Notify Professor
@@ -1278,22 +1384,90 @@ app.post('/api/assignments/:id/submit', authenticateToken, async (req, res) => {
           resolvedGroupId,
           'submission_notice',
           'Work Submitted',
-          `${student.name || student.email} confirmed completion for "${assignment.title}".`,
+          `${student.name || student.email} (Group Leader) confirmed completion for "${assignment.title}".`,
           'unread',
           'none'
         ]
       );
+
+      // Notify group members if group assignment
+      if (assignment.assigned_to_type === 'groups' && targetStudentIds.length > 1) {
+        for (const sid of targetStudentIds) {
+          if (!idsMatch(sid, req.user.id)) {
+            await db.query(
+              'INSERT INTO notifications (user_id, sender_id, group_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+              [
+                sid,
+                req.user.id,
+                resolvedGroupId,
+                'submission_notice',
+                'Group Assignment Submitted',
+                `Your Group Leader (${student.name || student.email}) confirmed submission for "${assignment.title}".`,
+                'unread',
+                'none'
+              ]
+            );
+          }
+        }
+      }
     } catch (notifyErr) {
-      console.warn('Submission saved, but professor notification failed:', notifyErr.message);
+      console.error('Error sending submission notification:', notifyErr);
     }
 
     res.json({
       message: 'Work submitted and confirmed successfully!',
-      submission
+      submission: primarySubmission
     });
   } catch (error) {
     console.error('Submit Assignment Error:', error);
     res.status(500).json({ message: 'Failed to submit assignment' });
+  }
+});
+
+// 22b. Grade Assignment Submission Endpoint (Teacher / Admin)
+app.put('/api/assignments/submissions/:id/grade', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const submissionId = req.params.id;
+    const { grade, feedback, status } = req.body || {};
+
+    const updated = await db.query(
+      `UPDATE assignment_submissions
+       SET grade = $1, feedback = $2, status = $3, graded_at = CURRENT_TIMESTAMP
+       WHERE CAST(id AS TEXT) = CAST($4 AS TEXT) RETURNING *`,
+      [grade || null, feedback || null, status || 'graded', submissionId]
+    );
+
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
+
+    const sub = updated.rows[0];
+
+    // Notify Student
+    try {
+      const asgnRes = await db.query('SELECT title FROM assignments WHERE id = $1', [sub.assignment_id]);
+      const asgnTitle = asgnRes.rows[0] ? asgnRes.rows[0].title : 'Assignment';
+      await db.query(
+        'INSERT INTO notifications (user_id, sender_id, group_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [
+          sub.student_id,
+          req.user.id,
+          sub.group_id,
+          'grade_notice',
+          'Assignment Graded',
+          `Your submission for "${asgnTitle}" has been graded: ${grade || 'Reviewed'}.`,
+          'unread',
+          'none'
+        ]
+      );
+    } catch (nErr) {
+      console.warn('Graded submission, notification warning:', nErr.message);
+    }
+
+    res.json({ message: 'Submission graded successfully', submission: sub });
+  } catch (error) {
+    console.error('Grade Submission Error:', error);
+    res.status(500).json({ message: 'Failed to grade submission' });
   }
 });
 
@@ -1422,6 +1596,37 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
         ? 100
         : 0;
 
+    // Calculate Courses Taught breakdown for faculty dashboard
+    const coursesMap = {};
+    assignments.forEach((asgn) => {
+      const cName = asgn.course_name || 'General Coursework';
+      if (!coursesMap[cName]) {
+        coursesMap[cName] = {
+          courseName: cName,
+          assignmentCount: 0,
+          assignments: [],
+          studentCount: students.length,
+          submittedCount: 0,
+          gradedCount: 0,
+          pendingCount: 0
+        };
+      }
+      coursesMap[cName].assignmentCount += 1;
+      coursesMap[cName].assignments.push(asgn.id);
+    });
+
+    Object.values(coursesMap).forEach((course) => {
+      const courseAsgnIds = new Set(course.assignments.map(id => String(id)));
+      const courseSubs = submissions.filter(s => courseAsgnIds.has(String(s.assignment_id)));
+      course.submittedCount = courseSubs.length;
+      course.gradedCount = courseSubs.filter(s => Boolean(s.grade)).length;
+      const expectedTotal = course.studentCount * course.assignmentCount;
+      course.pendingCount = Math.max(0, expectedTotal - course.submittedCount);
+      course.completionRate = expectedTotal > 0 ? Math.round((course.submittedCount / expectedTotal) * 100) : (course.submittedCount > 0 ? 100 : 0);
+    });
+
+    const coursesTaught = Object.values(coursesMap);
+
     res.json({
       summary: {
         totalStudents: students.length,
@@ -1430,6 +1635,7 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
         totalSubmissions: submissions.length,
         overallCompletionRate
       },
+      coursesTaught,
       assignmentPerformance,
       groupPerformance,
       recentSubmissions
@@ -1437,6 +1643,53 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
   } catch (error) {
     console.error('Fetch Analytics Error:', error);
     res.status(500).json({ message: 'Failed to fetch analytics' });
+  }
+});
+
+// 24. Courses Collection API Endpoints
+app.get('/api/courses', authenticateToken, async (req, res) => {
+  try {
+    const coursesRes = await db.query('SELECT * FROM courses ORDER BY created_at DESC');
+    let courses = coursesRes.rows || [];
+
+    // If courses table is empty, derive dynamic courses from active assignments
+    if (courses.length === 0) {
+      const asgnsRes = await db.query('SELECT DISTINCT course_name FROM assignments');
+      courses = asgnsRes.rows.map((row, idx) => ({
+        id: idx + 1,
+        course_code: `COURSE-${idx + 101}`,
+        course_name: row.course_name || 'General Coursework',
+        description: `Official curriculum for ${row.course_name || 'General Coursework'}`
+      }));
+    }
+
+    res.json({ courses });
+  } catch (error) {
+    console.error('Fetch Courses Error:', error);
+    res.status(500).json({ message: 'Failed to fetch courses collection' });
+  }
+});
+
+app.post('/api/courses', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { courseCode, courseName, description } = req.body || {};
+    if (!courseName || !courseName.trim()) {
+      return res.status(400).json({ message: 'Course name is required' });
+    }
+
+    const code = courseCode ? courseCode.trim().toUpperCase() : `CS-${Math.floor(100 + Math.random() * 900)}`;
+    const result = await db.query(
+      'INSERT INTO courses (course_code, course_name, description, professor_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [code, courseName.trim(), description ? description.trim() : '', req.user.id]
+    );
+
+    res.status(201).json({
+      message: 'Course created successfully!',
+      course: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Create Course Error:', error);
+    res.status(500).json({ message: 'Failed to create course' });
   }
 });
 

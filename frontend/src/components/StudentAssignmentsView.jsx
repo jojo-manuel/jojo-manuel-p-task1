@@ -20,12 +20,13 @@ import {
 } from 'lucide-react';
 import { PopoverSelect } from './AnchoredPopover';
 
-export default function StudentAssignmentsView({ token }) {
+export default function StudentAssignmentsView({ token, initialCourseFilter = '' }) {
   const [assignments, setAssignments] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterTab, setFilterTab] = useState('active'); // 'active' | 'completed' | 'missed'
+  const [selectedCourse, setSelectedCourse] = useState(initialCourseFilter || '');
 
   const [selectedAsgn, setSelectedAsgn] = useState(null);
   const [submitStep, setSubmitStep] = useState(1);
@@ -228,12 +229,20 @@ export default function StudentAssignmentsView({ token }) {
   const completedCount = completedAssignments.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  const displayedAssignments =
+  const availableCourses = Array.from(
+    new Set(assignments.map((a) => a.course_name || 'General Coursework'))
+  );
+
+  const baseAssignments =
     filterTab === 'completed'
       ? completedAssignments
       : filterTab === 'missed'
       ? missedAssignments
       : activeAssignments;
+
+  const displayedAssignments = selectedCourse && selectedCourse !== 'ALL'
+    ? baseAssignments.filter((a) => (a.course_name || 'General Coursework') === selectedCourse)
+    : baseAssignments;
 
   return (
     <div className="w-full space-y-6 text-left animate-fade-up">
@@ -256,6 +265,56 @@ export default function StudentAssignmentsView({ token }) {
           />
         </div>
       </div>
+
+      {/* Course Filter Selector Bar */}
+      {availableCourses.length > 0 && (
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+            <span className="flex items-center gap-1.5 text-indigo-700">
+              <BookOpen className="w-4 h-4" /> Filter by Enrolled Course:
+            </span>
+            {selectedCourse && selectedCourse !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setSelectedCourse('ALL')}
+                className="text-xs text-slate-500 hover:text-slate-800 underline font-semibold"
+              >
+                Clear filter (Show All)
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setSelectedCourse('ALL')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                !selectedCourse || selectedCourse === 'ALL'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              All Courses ({assignments.length})
+            </button>
+            {availableCourses.map((cName) => {
+              const count = assignments.filter((a) => (a.course_name || 'General Coursework') === cName).length;
+              return (
+                <button
+                  key={cName}
+                  type="button"
+                  onClick={() => setSelectedCourse(cName)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                    selectedCourse === cName
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {cName} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Due Today Alert Box */}
       {dueTodayAssignments.length > 0 && (
@@ -390,19 +449,25 @@ export default function StudentAssignmentsView({ token }) {
                   <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        {/* Submission Type Badge (Individual vs Group) */}
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                          className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
                             isGroupTask
-                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                              ? 'bg-purple-100 text-purple-800 border-purple-300'
+                              : 'bg-blue-100 text-blue-800 border-blue-300'
                           }`}
                         >
-                          {isGroupTask ? 'Group Task' : 'All Students'}
+                          {isGroupTask ? <Users className="w-3 h-3 text-purple-600" /> : <UserCheck className="w-3 h-3 text-blue-600" />}
+                          {asgn.submissionType || (isGroupTask ? 'Group Assignment' : 'Individual Assignment')}
+                        </span>
+
+                        {/* Course Name Tag */}
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {asgn.course_name || 'General Coursework'}
                         </span>
 
                         {/* Assigned Teacher Name */}
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-                          <UserCheck className="w-3 h-3 text-indigo-600" />
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
                           Teacher: {asgn.teacher_name || 'Faculty Member'}
                         </span>
 
@@ -421,8 +486,8 @@ export default function StudentAssignmentsView({ token }) {
                       <h3 className="text-base font-semibold text-slate-900">{asgn.title}</h3>
                     </div>
                     {isDone ? (
-                      <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-semibold shrink-0 flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Submitted
+                      <span className="badge bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold shrink-0 flex items-center gap-1.5 animate-fade-in shadow-sm">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 animate-check-bounce" /> Confirmed Submitted
                       </span>
                     ) : isExpired ? (
                       <span className="badge bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold shrink-0 flex items-center gap-1">
@@ -430,7 +495,7 @@ export default function StudentAssignmentsView({ token }) {
                       </span>
                     ) : (
                       <span className="badge bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold shrink-0 flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-amber-500" /> Pending
+                        <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" /> Pending Submission
                       </span>
                     )}
                   </div>
@@ -534,45 +599,103 @@ export default function StudentAssignmentsView({ token }) {
                   )}
                 </div>
 
-                {/* Submission Action Button */}
-                {isDone ? (
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" /> Confirmed on{' '}
-                      {new Date(asgn.submission.created_at).toLocaleDateString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(event) => handleOpenSubmitModal(asgn, event)}
-                      className="text-xs font-bold text-slate-600 hover:text-slate-900 underline min-h-10 px-2"
-                    >
-                      Update submission
-                    </button>
-                  </div>
-                ) : isExpired ? (
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="text-xs text-rose-700 font-bold flex items-center gap-1">
-                      <AlertTriangle className="w-4 h-4 text-rose-600" /> Deadline Passed
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(event) => handleOpenSubmitModal(asgn, event)}
-                      className="btn-secondary py-2 px-3 text-xs min-h-10"
-                    >
-                      Late Submit
-                    </button>
-                  </div>
-                ) : (
-                  <div className="pt-3 border-t border-slate-100">
-                    <button
-                      type="button"
-                      onClick={(event) => handleOpenSubmitModal(asgn, event)}
-                      className="btn-primary w-full py-2.5 text-xs min-h-10 justify-center"
-                    >
-                      <Send className="w-3.5 h-3.5" /> Submit & Confirm Work
-                    </button>
-                  </div>
-                )}
+                  {/* Teacher Grade & Feedback Display */}
+                  {asgn.submission?.grade && (
+                    <div className="p-3.5 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-purple-950 flex items-center gap-1.5">
+                          <Award className="w-4 h-4 text-purple-600" /> Grade Assigned: {asgn.submission.grade}
+                        </span>
+                        {asgn.submission.graded_at && (
+                          <span className="text-[10px] text-purple-600 font-bold">
+                            {new Date(asgn.submission.graded_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      {asgn.submission.feedback && (
+                        <p className="text-xs text-purple-900 font-medium italic bg-white/70 p-2 rounded-xl border border-purple-100">
+                          Teacher Feedback: "{asgn.submission.feedback}"
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submission Action Button & Group Leader Acknowledgment Rules */}
+                  {isGroupTask && asgn.userGroupRole === 'member' ? (
+                    <div className="pt-3 border-t border-slate-100 space-y-2">
+                      {isDone ? (
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-900 flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 min-w-0 truncate">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                            Confirmed by Group Leader ({asgn.groupLeaderName || 'Leader'})
+                          </span>
+                          <span className="text-[10px] text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                            Group Confirmed
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-900 space-y-1.5">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                            Awaiting Group Leader Confirmation
+                          </div>
+                          <p className="text-[11px] text-amber-800 leading-snug">
+                            Only your Group Leader (<strong>{asgn.groupLeaderName || 'Leader'}</strong>) can confirm submission for {asgn.groupName || 'your group'}.
+                          </p>
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full py-2 px-3 rounded-xl bg-amber-200/60 text-amber-900 text-xs font-bold cursor-not-allowed opacity-80 mt-1"
+                            title={`Only ${asgn.groupLeaderName || 'Group Leader'} can submit on behalf of ${asgn.groupName || 'the group'}`}
+                          >
+                            🔒 Group Leader Confirmation Required
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : isDone ? (
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" /> Confirmed on{' '}
+                        {new Date(asgn.submission.created_at).toLocaleDateString()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(event) => handleOpenSubmitModal(asgn, event)}
+                        className="text-xs font-bold text-slate-600 hover:text-slate-900 underline min-h-10 px-2"
+                      >
+                        Update submission
+                      </button>
+                    </div>
+                  ) : isExpired ? (
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <span className="text-xs text-rose-700 font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4 text-rose-600" /> Deadline Passed
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(event) => handleOpenSubmitModal(asgn, event)}
+                        className="btn-secondary py-2 px-3 text-xs min-h-10"
+                      >
+                        Late Submit
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={(event) => handleOpenSubmitModal(asgn, event)}
+                        className={`w-full py-2.5 text-xs min-h-10 justify-center btn-primary ${
+                          isGroupTask ? 'bg-purple-600 hover:bg-purple-700' : ''
+                        }`}
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        {isGroupTask
+                          ? `👑 Submit Group Work (${asgn.groupName || 'Leader Authority'})`
+                          : 'Submit & Confirm Work'}
+                      </button>
+                    </div>
+                  )}
               </div>
             );
           })}
@@ -609,9 +732,14 @@ export default function StudentAssignmentsView({ token }) {
             </div>
 
             {submitSuccess && (
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                <span>{submitSuccess}</span>
+              <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 text-sm font-bold flex items-center gap-3 animate-fade-up shadow-md">
+                <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-extrabold text-base shrink-0 animate-check-bounce">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-emerald-950">Submission Confirmed!</h4>
+                  <p className="text-xs font-semibold text-emerald-700 mt-0.5">{submitSuccess}</p>
+                </div>
               </div>
             )}
 

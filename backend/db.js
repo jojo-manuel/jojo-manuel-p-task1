@@ -148,11 +148,31 @@ async function initDb() {
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
 
+        `CREATE TABLE IF NOT EXISTS courses (
+          id SERIAL PRIMARY KEY,
+          course_code VARCHAR(50) NOT NULL,
+          course_name VARCHAR(255) NOT NULL,
+          description TEXT,
+          professor_id INTEGER,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )`,
+
+        `CREATE TABLE IF NOT EXISTS course_enrollments (
+          id SERIAL PRIMARY KEY,
+          course_id INTEGER,
+          student_id INTEGER,
+          enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )`,
+
+        "ALTER TABLE groups ADD COLUMN IF NOT EXISTS leader_id INTEGER",
+        "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS course_id INTEGER",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS onedrive_link VARCHAR(500)",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS assigned_to_type VARCHAR(50) DEFAULT 'all'",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS assigned_group_ids TEXT",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS question_paper_url TEXT",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS question_paper_name VARCHAR(255)",
+        "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS course_name VARCHAR(255) DEFAULT 'General Coursework'",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
 
         `CREATE TABLE IF NOT EXISTS notifications (
@@ -178,6 +198,10 @@ async function initDb() {
           submission_notes TEXT,
           submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
+
+        "ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS grade VARCHAR(50)",
+        "ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS feedback TEXT",
+        "ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS graded_at TIMESTAMP WITH TIME ZONE",
 
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_submissions_assignment_student ON assignment_submissions (assignment_id, student_id)"
       ];
@@ -421,34 +445,24 @@ async function query(text, params = []) {
     return { rows: [newMember], rowCount: 1 };
   }
 
-  // SELECT group_member specific record (by group_id & user_id)
-  if (normalized.match(/^SELECT \* FROM group_members WHERE group_id = \$1 AND user_id = \$2/i)) {
-    const groupId = parseInt(params[0], 10);
-    const userId = parseInt(params[1], 10);
-    const member = fallbackGroupMembers.find(m => m.group_id === groupId && m.user_id === userId);
+  // SELECT group_members for group_id & user_id (2 params)
+  if (normalized.match(/FROM group_members/i) && params.length === 2) {
+    const groupId = params[0];
+    const userId = params[1];
+    const member = fallbackGroupMembers.find(m => fallbackIdsMatch(m.group_id, groupId) && fallbackIdsMatch(m.user_id, userId));
     return { rows: member ? [member] : [], rowCount: member ? 1 : 0 };
   }
 
-  // SELECT group_members for a user (by user_id)
-  if (normalized.match(/FROM group_members.*user_id = \$1/i)) {
-    const userId = parseInt(params[0], 10);
-    const members = fallbackGroupMembers.filter(m => m.user_id === userId);
-    const filtered = /status\s*=\s*'accepted'/i.test(normalized)
-      ? members.filter(m => m.status === 'accepted')
-      : members;
-    return { rows: filtered, rowCount: filtered.length };
-  }
-
-  // SELECT group_members for a group (joined with users)
-  if (normalized.match(/FROM group_members/i)) {
-    const groupId = parseInt(params[0], 10);
-    let memberRows = fallbackGroupMembers.filter(m => m.group_id === groupId);
-    if (/status\s*=\s*'accepted'/i.test(normalized)) {
-      memberRows = memberRows.filter(m => m.status === 'accepted');
+  // SELECT group_members for a group (by group_id)
+  if (normalized.match(/FROM group_members/i) && (normalized.match(/WHERE.*group_id/i) || normalized.match(/WHERE.*gm\.group_id/i) || normalized.match(/WHERE.*g\.id/i))) {
+    const groupId = params[0];
+    let memberRows = fallbackGroupMembers.filter(m => fallbackIdsMatch(m.group_id, groupId));
+    if (/status\s*=\s*'accepted'/i.test(normalized) || /LOWER\(status\)\s*=\s*'accepted'/i.test(normalized)) {
+      memberRows = memberRows.filter(m => m.status === 'accepted' || m.role === 'creator' || m.role === 'admin');
     }
     const members = memberRows
       .map(m => {
-        const user = fallbackUsers.find(u => u.id === m.user_id) || {};
+        const user = fallbackUsers.find(u => fallbackIdsMatch(u.id, m.user_id)) || {};
         return {
           ...m,
           user_name: user.name || user.email,
@@ -459,6 +473,16 @@ async function query(text, params = []) {
         };
       });
     return { rows: members, rowCount: members.length };
+  }
+
+  // SELECT group_members for a user (by user_id)
+  if (normalized.match(/FROM group_members/i) && (normalized.match(/WHERE.*user_id/i) || normalized.match(/WHERE.*gm\.user_id/i))) {
+    const userId = params[0];
+    const members = fallbackGroupMembers.filter(m => fallbackIdsMatch(m.user_id, userId));
+    const filtered = /status.*accepted/i.test(normalized) || /LOWER\(status\)\s*=\s*'accepted'/i.test(normalized) || /creator/i.test(normalized)
+      ? members.filter(m => m.status === 'accepted' || m.role === 'creator' || m.role === 'admin')
+      : members;
+    return { rows: filtered, rowCount: filtered.length };
   }
 
   // UPDATE group_members status
@@ -576,21 +600,27 @@ async function query(text, params = []) {
   if (normalized.match(/^INSERT INTO assignments/i)) {
     const title = params[0];
     const description = params[1] || '';
-    const due_date = params[2] || null;
-    const onedrive_link = params[3] || null;
-    const assigned_to_type = params[4] || 'all';
-    const assigned_group_ids = params[5] || '[]';
-    const created_by = parseInt(params[6], 10);
+    const course_name = params[2] || 'General Coursework';
+    const due_date = params[3] || null;
+    const onedrive_link = params[4] || null;
+    const assigned_to_type = params[5] || 'all';
+    const assigned_group_ids = params[6] || '[]';
+    const created_by = parseInt(params[7], 10);
+    const question_paper_url = params[8] || null;
+    const question_paper_name = params[9] || null;
 
     const newAssignment = {
       id: nextAssignmentId++,
       title,
       description,
+      course_name,
       due_date,
       onedrive_link,
       assigned_to_type,
       assigned_group_ids,
       created_by,
+      question_paper_url,
+      question_paper_name,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -603,20 +633,26 @@ async function query(text, params = []) {
   if (normalized.match(/^UPDATE assignments SET/i)) {
     const title = params[0];
     const description = params[1];
-    const due_date = params[2];
-    const onedrive_link = params[3];
-    const assigned_to_type = params[4];
-    const assigned_group_ids = params[5];
-    const id = parseInt(params[6], 10);
+    const course_name = params[2];
+    const due_date = params[3];
+    const onedrive_link = params[4];
+    const assigned_to_type = params[5];
+    const assigned_group_ids = params[6];
+    const question_paper_url = params[7];
+    const question_paper_name = params[8];
+    const id = parseInt(params[9], 10);
 
     const item = fallbackAssignments.find(a => a.id === id);
     if (item) {
       if (title !== undefined) item.title = title;
       if (description !== undefined) item.description = description;
+      if (course_name !== undefined) item.course_name = course_name;
       if (due_date !== undefined) item.due_date = due_date;
       if (onedrive_link !== undefined) item.onedrive_link = onedrive_link;
       if (assigned_to_type !== undefined) item.assigned_to_type = assigned_to_type;
       if (assigned_group_ids !== undefined) item.assigned_group_ids = assigned_group_ids;
+      if (question_paper_url !== undefined) item.question_paper_url = question_paper_url;
+      if (question_paper_name !== undefined) item.question_paper_name = question_paper_name;
       item.updated_at = new Date().toISOString();
       saveFallbackData();
       return { rows: [item], rowCount: 1 };
@@ -684,8 +720,23 @@ async function query(text, params = []) {
     return { rows: [newSub], rowCount: 1 };
   }
 
-  // UPDATE assignment_submissions (resubmit / confirm)
+  // UPDATE assignment_submissions (resubmit / grade)
   if (normalized.match(/^UPDATE assignment_submissions SET/i)) {
+    if (normalized.match(/grade\s*=/i)) {
+      // Grade update query: SET grade = $1, feedback = $2, status = $3, graded_at = CURRENT_TIMESTAMP WHERE id = $4
+      const [grade, feedback, status, id] = params;
+      const existing = fallbackSubmissions.find(s => fallbackIdsMatch(s.id, id));
+      if (existing) {
+        existing.grade = grade;
+        existing.feedback = feedback;
+        existing.status = status || 'graded';
+        existing.graded_at = new Date().toISOString();
+        saveFallbackData();
+        return { rows: [existing], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }
+
     const group_id = params[0] || null;
     const status = params[1] || 'submitted';
     const submission_link = params[2] || null;
@@ -706,7 +757,7 @@ async function query(text, params = []) {
   }
 
   // SELECT submissions for assignment (optionally scoped to one student)
-  if (normalized.match(/FROM assignment_submissions.*WHERE assignment_id/i) || normalized.match(/FROM assignment_submissions WHERE assignment_id/i)) {
+  if (normalized.match(/FROM assignment_submissions/i) && normalized.match(/assignment_id/i)) {
     const assignmentId = params[0];
     let matched = fallbackSubmissions.filter(s => fallbackIdsMatch(s.assignment_id, assignmentId));
     if (normalized.match(/student_id/i) && params[1] != null) {

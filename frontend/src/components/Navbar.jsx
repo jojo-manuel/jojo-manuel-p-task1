@@ -1,5 +1,5 @@
 import React from 'react';
-import { GraduationCap, LogOut, Bell } from 'lucide-react';
+import { GraduationCap, LogOut, Bell, Sparkles } from 'lucide-react';
 
 export default function Navbar({
   user,
@@ -8,16 +8,28 @@ export default function Navbar({
   onToggleNotifications,
   isNotificationsOpen
 }) {
-  const roleLabel = user?.role === 'admin' ? 'Faculty' : 'Student';
+  const roleLabel = user?.role === 'admin' ? 'Faculty Portal' : 'Student Portal';
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/85 backdrop-blur-md border-b border-slate-200/80 pt-[env(safe-area-inset-top)]">
+    <header className="sticky top-0 z-40 w-full glass-navbar pt-[env(safe-area-inset-top)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center shrink-0 shadow-sm">
-            <GraduationCap className="w-4 h-4 text-white" />
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center shrink-0 shadow-md shadow-indigo-200">
+            <GraduationCap className="w-5 h-5 text-white" />
           </div>
-          <p className="text-[15px] font-semibold tracking-tight text-slate-900">Joineazy</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base font-bold tracking-tight text-slate-900">Joineazy</span>
+            {user && (
+              <span className={`hidden xs:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                user.role === 'admin' 
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+              }`}>
+                <Sparkles className="w-3 h-3" />
+                {roleLabel}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -28,37 +40,37 @@ export default function Navbar({
                   type="button"
                   onClick={onToggleNotifications}
                   aria-label="Notifications"
-                  className={`relative h-9 w-9 rounded-lg flex items-center justify-center transition-all ${
+                  className={`relative h-9 w-9 rounded-xl flex items-center justify-center transition-all ${
                     isNotificationsOpen
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <Bell className="w-4 h-4" />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white font-semibold text-[9px] flex items-center justify-center animate-[badgePulse_1.6s_ease-in-out_infinite]">
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white font-bold text-[9px] flex items-center justify-center shadow-sm animate-[badgePulse_1.6s_ease-in-out_infinite]">
                       {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                     </span>
                   )}
                 </button>
               )}
 
-              <div className="hidden sm:flex items-center gap-2 min-w-0 pl-1">
-                <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-semibold text-xs shrink-0">
+              <div className="hidden sm:flex items-center gap-2.5 min-w-0 pl-1">
+                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                   {(user.name || user.email || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div className="text-left leading-tight min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate max-w-[140px] md:max-w-[180px]">
+                  <p className="text-sm font-semibold text-slate-900 truncate max-w-[140px] md:max-w-[180px]">
                     {user.name || user.email}
                   </p>
-                  <p className="text-[11px] text-slate-400">{roleLabel}</p>
+                  <p className="text-[11px] text-slate-500 font-medium">{user.school || roleLabel}</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={onLogout}
-                className="h-9 px-2.5 sm:px-3 rounded-lg text-sm text-slate-600 hover:bg-slate-100 inline-flex items-center gap-1.5 transition-colors"
+                className="h-9 px-3 rounded-xl text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-600 inline-flex items-center gap-1.5 transition-colors border border-transparent hover:border-rose-100"
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />

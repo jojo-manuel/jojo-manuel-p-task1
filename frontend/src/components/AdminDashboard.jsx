@@ -22,7 +22,8 @@ import {
   Send,
   AlertCircle,
   Upload,
-  UserCheck
+  UserCheck,
+  Award
 } from 'lucide-react';
 import { DateTimeField } from './AnchoredPopover';
 
@@ -48,6 +49,7 @@ export default function AdminDashboard({ token }) {
   const [editingAsgn, setEditingAsgn] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [courseName, setCourseName] = useState('Physics 101');
   const [dueDate, setDueDate] = useState('');
   const [onedriveLink, setOnedriveLink] = useState('');
   const [assignedToType, setAssignedToType] = useState('all');
@@ -61,6 +63,13 @@ export default function AdminDashboard({ token }) {
   // Analytics state
   const [analytics, setAnalytics] = useState(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+
+  // Grading Modal State
+  const [gradingSub, setGradingSub] = useState(null);
+  const [gradeValue, setGradeValue] = useState('');
+  const [feedbackValue, setFeedbackValue] = useState('');
+  const [gradingLoading, setGradingLoading] = useState(false);
+  const [gradeError, setGradeError] = useState(null);
 
   const fetchStudents = async () => {
     setLoadingDirectory(true);
@@ -135,6 +144,7 @@ export default function AdminDashboard({ token }) {
     setEditingAsgn(null);
     setTitle('');
     setDescription('');
+    setCourseName('Physics 101');
     setDueDate('');
     setOnedriveLink('');
     setAssignedToType('all');
@@ -150,6 +160,7 @@ export default function AdminDashboard({ token }) {
     setEditingAsgn(asgn);
     setTitle(asgn.title || '');
     setDescription(asgn.description || '');
+    setCourseName(asgn.course_name || 'General Coursework');
     setDueDate(asgn.due_date ? new Date(asgn.due_date).toISOString().slice(0, 16) : '');
     setOnedriveLink(asgn.onedrive_link || '');
     setAssignedToType(asgn.assigned_to_type || 'all');
@@ -225,6 +236,7 @@ export default function AdminDashboard({ token }) {
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim(),
+          courseName: courseName.trim() || 'General Coursework',
           dueDate: dueDate || null,
           onedriveLink: onedriveLink.trim() || null,
           assignedToType,
@@ -262,6 +274,39 @@ export default function AdminDashboard({ token }) {
       }
     } catch (err) {
       console.error('Error deleting assignment:', err);
+    }
+  };
+
+  // Save Grade & Feedback for Submission
+  const handleSaveGrade = async (e) => {
+    e.preventDefault();
+    if (!gradingSub) return;
+    setGradingLoading(true);
+    setGradeError(null);
+    try {
+      const res = await fetch(`/api/assignments/submissions/${gradingSub.id}/grade`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          grade: gradeValue.trim(),
+          feedback: feedbackValue.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to submit grade');
+      }
+
+      setGradingSub(null);
+      await fetchAnalyticsAndGroups();
+      await fetchAssignments();
+    } catch (err) {
+      setGradeError(err.message);
+    } finally {
+      setGradingLoading(false);
     }
   };
 
@@ -357,6 +402,9 @@ export default function AdminDashboard({ token }) {
                       <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              {asgn.course_name || 'General Coursework'}
+                            </span>
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                                 isGroupTarget
@@ -521,6 +569,72 @@ export default function AdminDashboard({ token }) {
                       style={{ width: `${analytics.summary?.overallCompletionRate || 0}%` }}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Courses Taught Grid Section with Submission Statuses & Student Count */}
+              <div className="classic-card p-4 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-md space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 min-w-0">
+                    <BookOpen className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span className="truncate">Courses Taught & Submission Analytics</span>
+                  </h3>
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100 shrink-0">
+                    {analytics.coursesTaught?.length || 0} Active Courses
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {analytics.coursesTaught && analytics.coursesTaught.length > 0 ? (
+                    analytics.coursesTaught.map((c) => (
+                      <div key={c.courseName} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3 shadow-sm hover:border-indigo-300 transition-all text-left">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="text-base font-bold text-slate-900 truncate">{c.courseName}</h4>
+                            <span className="text-xs font-semibold text-slate-500">
+                              {c.studentCount} Students Enrolled
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 shrink-0">
+                            {c.assignmentCount} {c.assignmentCount === 1 ? 'Task' : 'Tasks'}
+                          </span>
+                        </div>
+
+                        {/* Submission status breakdown pill grid */}
+                        <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
+                          <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200/80">
+                            <span className="block font-extrabold text-emerald-800 text-sm">{c.submittedCount}</span>
+                            <span className="text-[10px] font-bold text-emerald-700">Submitted</span>
+                          </div>
+                          <div className="p-2 rounded-xl bg-amber-50 border border-amber-200/80">
+                            <span className="block font-extrabold text-amber-800 text-sm">{c.pendingCount}</span>
+                            <span className="text-[10px] font-bold text-amber-700">Pending</span>
+                          </div>
+                          <div className="p-2 rounded-xl bg-purple-50 border border-purple-200/80">
+                            <span className="block font-extrabold text-purple-800 text-sm">{c.gradedCount}</span>
+                            <span className="text-[10px] font-bold text-purple-700">Graded</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="text-slate-500">Course Completion Rate</span>
+                            <span className="text-indigo-600">{c.completionRate}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full transition-all"
+                              style={{ width: `${c.completionRate}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-6 text-center text-xs text-slate-400 col-span-3">
+                      No active courses published yet.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -717,7 +831,7 @@ export default function AdminDashboard({ token }) {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-3 shrink-0 flex-wrap">
                           {sub.submission_link && (
                             <a
                               href={sub.submission_link}
@@ -728,6 +842,19 @@ export default function AdminDashboard({ token }) {
                               Submission Link <ExternalLink className="w-3 h-3" />
                             </a>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGradingSub(sub);
+                              setGradeValue(sub.grade || '');
+                              setFeedbackValue(sub.feedback || '');
+                              setGradeError(null);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1 shrink-0"
+                          >
+                            <Award className="w-3.5 h-3.5 text-purple-600" />
+                            {sub.grade ? `Grade: ${sub.grade}` : 'Grade / Feedback'}
+                          </button>
                           <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
                             Confirmed
                           </span>
@@ -854,6 +981,19 @@ export default function AdminDashboard({ token }) {
             )}
 
             <form onSubmit={handleSaveAssignment} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Course / Subject Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={courseName}
+                  onChange={(e) => setCourseName(e.target.value)}
+                  placeholder="e.g. Physics 101, Data Structures, Linear Algebra"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+                />
+              </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Assignment Title <span className="text-rose-500">*</span>
@@ -1046,6 +1186,87 @@ export default function AdminDashboard({ token }) {
                 >
                   <Send className="w-3.5 h-3.5" />
                   {savingAsgn ? 'Publishing...' : editingAsgn ? 'Update Assignment' : 'Publish Assignment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Grade & Feedback Modal */}
+      {gradingSub && (
+        <div
+          className="modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setGradingSub(null);
+          }}
+        >
+          <div
+            className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5 text-left"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                <Award className="w-5 h-5 text-purple-600 shrink-0" />
+                <span>Grade Submission for {gradingSub.student_name}</span>
+              </h3>
+              <button
+                onClick={() => setGradingSub(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {gradeError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                {gradeError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveGrade} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Grade / Score (e.g., A+, 95/100, Passed)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={gradeValue}
+                  onChange={(e) => setGradeValue(e.target.value)}
+                  placeholder="e.g. A+ or 92/100"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Teacher Feedback & Comments
+                </label>
+                <textarea
+                  rows={4}
+                  value={feedbackValue}
+                  onChange={(e) => setFeedbackValue(e.target.value)}
+                  placeholder="Great work on the lab calculations! Matrix representation was clear."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                />
+              </div>
+
+              <div className="pt-3 action-stack border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setGradingSub(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 min-h-11"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={gradingLoading || !gradeValue.trim()}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11"
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  {gradingLoading ? 'Saving Grade...' : 'Save Grade & Notify Student'}
                 </button>
               </div>
             </form>
