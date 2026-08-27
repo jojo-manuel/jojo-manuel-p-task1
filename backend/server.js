@@ -447,7 +447,7 @@ app.post('/api/auth/google', async (req, res) => {
     return res.status(signedIn.status).json(signedIn.body);
   } catch (error) {
     console.error('Google Auth Error:', error);
-    res.status(500).json({ message: 'Google authentication failed' });
+    res.status(500).json({ message: error.message || 'Google authentication failed' });
   }
 });
 
