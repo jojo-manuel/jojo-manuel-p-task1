@@ -20,6 +20,7 @@ import {
   UserMinus
 } from 'lucide-react';
 import { useToast } from './Toast';
+import { LoadingSpinner, ButtonSpinner, SkeletonList } from './LoadingSpinner';
 
 export default function StudentGroupManager({ user, token, onGroupUpdated }) {
   const { toast } = useToast();
@@ -290,7 +291,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
             </div>
 
             {searching ? (
-              <div className="p-4 text-center text-xs text-slate-400">Searching student directory...</div>
+              <LoadingSpinner size="sm" text="Searching student directory..." className="py-4" />
             ) : searchResults.length > 0 ? (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                 {searchResults.map((student) => (
@@ -314,9 +315,10 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
                     <button
                       onClick={() => handleSendInvite(student.email, student.id)}
                       disabled={!selectedGroup || inviting}
-                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] px-3 py-2 rounded-xl flex items-center gap-1 shrink-0 disabled:opacity-50 min-h-10"
+                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-[11px] px-3 py-2 rounded-xl flex items-center gap-1.5 shrink-0 disabled:opacity-50 min-h-10"
                     >
-                      <UserPlus className="w-3.5 h-3.5" /> Invite
+                      {inviting ? <ButtonSpinner className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                      <span>Invite</span>
                     </button>
                   </div>
                 ))}
@@ -335,7 +337,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
               <Users className="w-4 h-4 text-indigo-600" /> My Groups ({groups.length})
             </h3>
             {loadingGroups ? (
-              <div className="p-4 text-center text-xs text-slate-400">Loading your groups...</div>
+              <SkeletonList rows={3} />
             ) : groups.length === 0 ? (
               <div className="p-6 text-center space-y-2">
                 <Users className="w-8 h-8 text-slate-300 mx-auto" />

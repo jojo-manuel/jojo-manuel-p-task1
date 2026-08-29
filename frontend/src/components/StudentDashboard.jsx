@@ -18,6 +18,7 @@ import {
 import StudentGroupManager from './StudentGroupManager';
 import NotificationCenter from './NotificationCenter';
 import StudentAssignmentsView from './StudentAssignmentsView';
+import { SkeletonCourses, LoadingSpinner } from './LoadingSpinner';
 
 export default function StudentDashboard({
   user,
@@ -223,10 +224,7 @@ export default function StudentDashboard({
             </div>
 
             {loadingAssignments ? (
-              <div className="p-8 text-center classic-card rounded-2xl bg-white space-y-2">
-                <div className="w-7 h-7 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin mx-auto" />
-                <p className="text-xs text-slate-500 font-semibold">Loading enrolled courses...</p>
-              </div>
+              <SkeletonCourses count={3} />
             ) : enrolledCourses.length === 0 ? (
               <div className="p-8 text-center classic-card rounded-2xl bg-white border border-slate-200 space-y-2">
                 <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />

@@ -7,6 +7,7 @@ import TeacherOnboardingForm from './components/TeacherOnboardingForm';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { useToast } from './components/Toast';
+import { FullPageLoader } from './components/LoadingSpinner';
 import './App.css';
 
 async function safeParseJson(res) {
@@ -270,12 +271,7 @@ function App() {
 
   const renderCurrentView = () => {
     if (initialChecking) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-[55vh] gap-3">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Loading your portal…</p>
-        </div>
-      );
+      return <FullPageLoader message="Restoring secure portal session..." />;
     }
 
     if (!user) {

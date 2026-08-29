@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { DateTimeField } from './AnchoredPopover';
 import { useToast } from './Toast';
+import { LoadingSpinner, ButtonSpinner, SkeletonList, SkeletonCourses } from './LoadingSpinner';
 
 export default function AdminDashboard({ token, navHomeTrigger }) {
   const { toast } = useToast();
@@ -630,12 +631,9 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {activeTab === 'assignments' && (
         <div className="space-y-6">
           {loadingAssignments ? (
-            <div className="text-center py-12 classic-card rounded-xl bg-white space-y-2">
-              <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-500 font-semibold">Loading coursework records...</p>
-            </div>
+            <SkeletonList rows={4} />
           ) : asgnError ? (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm">
               {asgnError}
             </div>
           ) : assignments.length === 0 ? (
@@ -788,10 +786,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
           </div>
 
           {loadingCourses ? (
-            <div className="text-center py-12 classic-card rounded-xl bg-white space-y-2">
-              <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-500 font-semibold">Loading courses directory...</p>
-            </div>
+            <SkeletonCourses count={3} />
           ) : courseError ? (
             <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
               {courseError}
@@ -894,10 +889,11 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           {loadingAnalytics ? (
-            <div className="text-center py-12 classic-card rounded-xl bg-white space-y-2">
-              <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-500 font-semibold">Calculating submission analytics...</p>
-            </div>
+            <LoadingSpinner
+              size="lg"
+              text="Calculating submission & group analytics..."
+              subtext="Aggregating performance metrics, grades, and deadlines"
+            />
           ) : analytics ? (
             <>
               {/* Summary Stats Cards */}
@@ -1738,10 +1734,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
           </div>
 
           {loadingDirectory ? (
-            <div className="text-center py-12 classic-card rounded-xl bg-white">
-              <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
-              <p className="text-xs text-slate-500 font-medium">Loading student records...</p>
-            </div>
+            <SkeletonList rows={6} />
           ) : directoryError ? (
             <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs text-center">
               {directoryError}

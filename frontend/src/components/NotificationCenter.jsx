@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, Check, X, Users, CheckCircle, XCircle, Clock, Info, ArrowLeft } from 'lucide-react';
 import { useToast } from './Toast';
+import { ButtonSpinner } from './LoadingSpinner';
 
 export default function NotificationCenter({
   notifications = [],
@@ -219,9 +220,10 @@ export default function NotificationCenter({
                             e.stopPropagation();
                             handleRespond(item.id, 'accept');
                           }}
-                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 min-h-11"
+                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 min-h-11 cursor-pointer"
                         >
-                          <Check className="w-4 h-4" /> Accept
+                          {loadingId === item.id ? <ButtonSpinner className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                          <span>Accept</span>
                         </button>
                         <button
                           disabled={loadingId === item.id}
@@ -229,9 +231,10 @@ export default function NotificationCenter({
                             e.stopPropagation();
                             handleRespond(item.id, 'reject');
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-50 font-bold text-xs px-3 py-2.5 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 min-h-11"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-50 font-bold text-xs px-3 py-2.5 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 min-h-11 cursor-pointer"
                         >
-                          <X className="w-4 h-4 text-slate-500" /> Decline
+                          {loadingId === item.id ? <ButtonSpinner className="w-4 h-4" /> : <X className="w-4 h-4 text-slate-500" />}
+                          <span>Decline</span>
                         </button>
                       </div>
                     )}

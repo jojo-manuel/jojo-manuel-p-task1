@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { PopoverSelect } from './AnchoredPopover';
 import { useToast } from './Toast';
+import { SkeletonCardGrid, ButtonSpinner } from './LoadingSpinner';
 
 export default function StudentAssignmentsView({ token, initialCourseFilter = '' }) {
   const { toast } = useToast();
@@ -411,10 +412,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       </div>
 
       {loading ? (
-        <div className="p-12 text-center classic-card rounded-xl bg-white space-y-2">
-          <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin mx-auto mb-2" />
-          <p className="text-xs text-slate-500 font-semibold">Loading assignments...</p>
-        </div>
+        <SkeletonCardGrid count={4} />
       ) : displayedAssignments.length === 0 ? (
         <div className="p-12 text-center classic-card rounded-xl bg-white border border-slate-200 space-y-3">
           <FileText className="w-12 h-12 text-slate-300 mx-auto" />
@@ -900,9 +898,16 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
                     type="button"
                     disabled={submitting}
                     onClick={handleFinalConfirmSubmission}
-                    className="btn-primary w-2/3 py-3 text-sm justify-center min-h-11"
+                    className="btn-primary w-2/3 py-3 text-sm justify-center min-h-11 gap-2"
                   >
-                    {submitting ? 'Confirming...' : 'Final Confirm & Publish'}
+                    {submitting ? (
+                      <>
+                        <ButtonSpinner className="w-4 h-4" />
+                        <span>Confirming...</span>
+                      </>
+                    ) : (
+                      'Final Confirm & Publish'
+                    )}
                   </button>
                 </div>
               </div>
