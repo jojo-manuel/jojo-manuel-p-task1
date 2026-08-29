@@ -187,15 +187,16 @@ async function initDb() {
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           description TEXT,
-          created_by INTEGER,
+          created_by VARCHAR(255),
+          leader_id VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
 
         `CREATE TABLE IF NOT EXISTS group_members (
           id SERIAL PRIMARY KEY,
-          group_id INTEGER,
-          user_id INTEGER,
+          group_id VARCHAR(255),
+          user_id VARCHAR(255),
           role VARCHAR(50) DEFAULT 'member',
           status VARCHAR(50) DEFAULT 'pending',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -211,7 +212,7 @@ async function initDb() {
           onedrive_link VARCHAR(500),
           assigned_to_type VARCHAR(50) DEFAULT 'all',
           assigned_group_ids TEXT,
-          created_by INTEGER,
+          created_by VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
@@ -221,20 +222,29 @@ async function initDb() {
           course_code VARCHAR(50) NOT NULL,
           course_name VARCHAR(255) NOT NULL,
           description TEXT,
-          professor_id INTEGER,
+          professor_id VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
 
         `CREATE TABLE IF NOT EXISTS course_enrollments (
           id SERIAL PRIMARY KEY,
-          course_id INTEGER,
-          student_id INTEGER,
+          course_id VARCHAR(255),
+          student_id VARCHAR(255),
           enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
 
-        "ALTER TABLE groups ADD COLUMN IF NOT EXISTS leader_id INTEGER",
-        "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS course_id INTEGER",
+        "ALTER TABLE groups ADD COLUMN IF NOT EXISTS leader_id VARCHAR(255)",
+        "ALTER TABLE groups ALTER COLUMN created_by TYPE VARCHAR(255) USING created_by::text",
+        "ALTER TABLE groups ALTER COLUMN leader_id TYPE VARCHAR(255) USING leader_id::text",
+
+        "ALTER TABLE group_members ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text",
+        "ALTER TABLE group_members ALTER COLUMN group_id TYPE VARCHAR(255) USING group_id::text",
+
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS professor_id VARCHAR(255)",
+        "ALTER TABLE courses ALTER COLUMN professor_id TYPE VARCHAR(255) USING professor_id::text",
+
+        "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS course_id VARCHAR(255)",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS onedrive_link VARCHAR(500)",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS assigned_to_type VARCHAR(50) DEFAULT 'all'",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS assigned_group_ids TEXT",
@@ -242,6 +252,8 @@ async function initDb() {
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS question_paper_name VARCHAR(255)",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS course_name VARCHAR(255) DEFAULT 'General Coursework'",
         "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE assignments ALTER COLUMN created_by TYPE VARCHAR(255) USING created_by::text",
+        "ALTER TABLE assignments ALTER COLUMN course_id TYPE VARCHAR(255) USING course_id::text",
 
         `CREATE TABLE IF NOT EXISTS notifications (
           id SERIAL PRIMARY KEY,
@@ -255,17 +267,26 @@ async function initDb() {
           invitation_status VARCHAR(50) DEFAULT 'none',
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
+        "ALTER TABLE notifications ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text",
+        "ALTER TABLE notifications ALTER COLUMN sender_id TYPE VARCHAR(255) USING sender_id::text",
+        "ALTER TABLE notifications ALTER COLUMN group_id TYPE VARCHAR(255) USING group_id::text",
 
         `CREATE TABLE IF NOT EXISTS assignment_submissions (
           id SERIAL PRIMARY KEY,
-          assignment_id INTEGER,
-          student_id INTEGER,
-          group_id INTEGER,
+          assignment_id VARCHAR(255),
+          student_id VARCHAR(255),
+          group_id VARCHAR(255),
           status VARCHAR(50) DEFAULT 'submitted',
           submission_link VARCHAR(500),
           submission_notes TEXT,
           submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         )`,
+        "ALTER TABLE assignment_submissions ALTER COLUMN student_id TYPE VARCHAR(255) USING student_id::text",
+        "ALTER TABLE assignment_submissions ALTER COLUMN assignment_id TYPE VARCHAR(255) USING assignment_id::text",
+        "ALTER TABLE assignment_submissions ALTER COLUMN group_id TYPE VARCHAR(255) USING group_id::text",
+
+        "ALTER TABLE course_enrollments ALTER COLUMN student_id TYPE VARCHAR(255) USING student_id::text",
+        "ALTER TABLE course_enrollments ALTER COLUMN course_id TYPE VARCHAR(255) USING course_id::text",
 
         "ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS grade VARCHAR(50)",
         "ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS feedback TEXT",
@@ -909,10 +930,10 @@ async function query(text, params = []) {
     const course_code = params[0] || `CS-${Math.floor(100 + Math.random() * 900)}`;
     const course_name = params[1] || 'General Coursework';
     const description = params[2] || '';
-    const professor_id = params[3] ? parseInt(params[3], 10) : null;
+    const professor_id = params[3] ? String(params[3]) : null;
 
     const newCourse = {
-      id: nextCourseId++,
+      id: `crs-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       course_code,
       course_name,
       description,

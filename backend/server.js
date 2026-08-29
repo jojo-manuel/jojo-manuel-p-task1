@@ -1904,16 +1904,28 @@ app.post('/api/courses', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     const code = courseCode && courseCode.trim() ? courseCode.trim().toUpperCase() : `CS-${Math.floor(100 + Math.random() * 900)}`;
-    const result = await db.query(
-      'INSERT INTO courses (course_code, course_name, description, professor_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [code, courseName.trim(), description ? description.trim() : '', req.user.id]
-    );
+    const professorId = req.user && req.user.id ? String(req.user.id) : null;
+
+    let result;
+    try {
+      result = await db.query(
+        'INSERT INTO courses (course_code, course_name, description, professor_id) VALUES ($1, $2, $3, $4) RETURNING *',
+        [code, courseName.trim(), description ? description.trim() : '', professorId]
+      );
+    } catch (insertErr) {
+      console.warn('Course insert with professor_id note:', insertErr.message);
+      result = await db.query(
+        'INSERT INTO courses (course_code, course_name, description) VALUES ($1, $2, $3) RETURNING *',
+        [code, courseName.trim(), description ? description.trim() : '']
+      );
+    }
 
     const createdCourse = (result.rows && result.rows[0]) || {
-      id: Date.now(),
+      id: `crs-${Date.now()}`,
       course_code: code,
       course_name: courseName.trim(),
       description: description ? description.trim() : '',
+      professor_id: professorId,
       created_at: new Date().toISOString()
     };
 
