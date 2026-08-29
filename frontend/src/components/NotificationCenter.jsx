@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Bell, Check, X, Users, CheckCircle, XCircle, Clock, Info } from 'lucide-react';
+import { Bell, Check, X, Users, CheckCircle, XCircle, Clock, Info, ArrowLeft } from 'lucide-react';
+import { useToast } from './Toast';
 
 export default function NotificationCenter({
   notifications = [],
@@ -7,6 +8,7 @@ export default function NotificationCenter({
   onRefresh,
   onClose
 }) {
+  const { toast } = useToast();
   const [loadingId, setLoadingId] = useState(null);
   const [actionMessage, setActionMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -30,9 +32,15 @@ export default function NotificationCenter({
       }
 
       setActionMessage(data.message);
+      if (action === 'accept') {
+        toast.success(data.message || 'Group invitation accepted!');
+      } else {
+        toast.info(data.message || 'Group invitation declined.');
+      }
       if (onRefresh) onRefresh();
     } catch (err) {
       setActionError(err.message);
+      toast.error(err.message || 'Failed to process invitation response');
     } finally {
       setLoadingId(null);
     }
@@ -40,23 +48,32 @@ export default function NotificationCenter({
 
   const handleMarkAllRead = async () => {
     try {
-      await fetch('/api/notifications/read-all', {
+      const res = await fetch('/api/notifications/read-all', {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (onRefresh) onRefresh();
+      if (res.ok) {
+        toast.success('All notifications marked as read');
+        if (onRefresh) onRefresh();
+      } else {
+        toast.error('Failed to mark notifications as read');
+      }
     } catch (err) {
       console.error('Error marking all as read:', err);
+      toast.error('Network error marking notifications');
     }
   };
 
   const handleMarkRead = async (notifId) => {
     try {
-      await fetch(`/api/notifications/${notifId}/read`, {
+      const res = await fetch(`/api/notifications/${notifId}/read`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (onRefresh) onRefresh();
+      if (res.ok) {
+        toast.info('Notification marked as read');
+        if (onRefresh) onRefresh();
+      }
     } catch (err) {
       console.error('Error marking as read:', err);
     }
@@ -68,7 +85,17 @@ export default function NotificationCenter({
     <div className="w-full classic-card overflow-hidden animate-fade-up text-left">
       <div className="p-4 sm:p-5 border-b border-slate-200 flex items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors shrink-0"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
             <Bell className="w-5 h-5 text-slate-700" />
           </div>
           <div>

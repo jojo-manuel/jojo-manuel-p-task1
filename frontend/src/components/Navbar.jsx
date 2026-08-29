@@ -4,6 +4,7 @@ import { GraduationCap, LogOut, Bell, Sparkles } from 'lucide-react';
 export default function Navbar({
   user,
   onLogout,
+  onGoHome,
   unreadNotificationsCount = 0,
   onToggleNotifications,
   isNotificationsOpen
@@ -13,12 +14,17 @@ export default function Navbar({
   return (
     <header className="sticky top-0 z-40 w-full glass-navbar pt-[env(safe-area-inset-top)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center shrink-0 shadow-md shadow-indigo-200">
+        <button
+          type="button"
+          onClick={onGoHome}
+          className="flex items-center gap-3 min-w-0 hover:opacity-90 transition-all text-left cursor-pointer group focus:outline-none"
+          title="Go to Home"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center shrink-0 shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base font-bold tracking-tight text-slate-900">Joineazy</span>
+            <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Joineazy</span>
             {user && (
               <span className={`hidden xs:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                 user.role === 'admin' 
@@ -30,7 +36,7 @@ export default function Navbar({
               </span>
             )}
           </div>
-        </div>
+        </button>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {user ? (

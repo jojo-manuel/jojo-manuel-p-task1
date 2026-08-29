@@ -14,10 +14,15 @@ import {
   Send,
   AlertCircle,
   Hash,
-  Award
+  Award,
+  ArrowLeft,
+  Trash2,
+  UserMinus
 } from 'lucide-react';
+import { useToast } from './Toast';
 
 export default function StudentGroupManager({ user, token, onGroupUpdated }) {
+  const { toast } = useToast();
   const [groups, setGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -38,6 +43,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(null);
   const [inviteError, setInviteError] = useState(null);
+  const [removingMemberId, setRemovingMemberId] = useState(null);
 
   useEffect(() => {
     fetchMyGroups();
@@ -136,14 +142,17 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
         throw new Error(data.message || 'Failed to create group');
       }
 
+      const createdGroupName = groupName.trim();
       setGroupName('');
       setGroupDesc('');
       setIsCreateModalOpen(false);
       await fetchMyGroups();
       if (data.group) setSelectedGroup(data.group);
       if (onGroupUpdated) onGroupUpdated();
+      toast.success(`Study group "${createdGroupName}" created successfully!`);
     } catch (err) {
       setCreateError(err.message);
+      toast.error(err.message || 'Failed to create group');
     } finally {
       setCreating(false);
     }
@@ -152,6 +161,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
   const handleSendInvite = async (targetEmail, targetUserId = null, targetStudentId = null) => {
     if (!selectedGroup) {
       setInviteError('Please select a group first');
+      toast.warning('Please select a group first');
       return;
     }
 
@@ -177,6 +187,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
       }
 
       setInviteSuccess(data.message);
+      toast.success(data.message || 'Invitation sent successfully!');
       setInviteEmail('');
       setInviteStudentId('');
       await fetchMyGroups();
@@ -189,8 +200,56 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
       }
     } catch (err) {
       setInviteError(err.message);
+      toast.error(err.message || 'Failed to send invitation');
     } finally {
       setInviting(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberUserId, memberName) => {
+    if (!selectedGroup) return;
+    const isSelf = String(memberUserId) === String(user?.id);
+    const confirmMsg = isSelf
+      ? `Are you sure you want to leave "${selectedGroup.name}"?`
+      : `Are you sure you want to remove ${memberName || 'this student'} from "${selectedGroup.name}"?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setRemovingMemberId(memberUserId);
+    try {
+      let res = await fetch(`/api/groups/${selectedGroup.id}/members/${memberUserId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      // Fallback in case DELETE was not routed
+      if (res.status === 404) {
+        res = await fetch(`/api/groups/${selectedGroup.id}/remove-member`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId: memberUserId })
+        });
+      }
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || (isSelf ? 'You left the group.' : 'Student removed from group.'));
+        if (data.members) {
+          setSelectedGroup((prev) => (prev ? { ...prev, members: data.members } : null));
+        }
+        await fetchMyGroups();
+        if (onGroupUpdated) onGroupUpdated();
+      } else {
+        toast.error(data.message || 'Failed to remove member.');
+      }
+    } catch (err) {
+      console.error('Error removing member:', err);
+      toast.error('Failed to remove member from group. Please try again.');
+    } finally {
+      setRemovingMemberId(null);
     }
   };
 
@@ -420,34 +479,83 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
                 </div>
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
                   {selectedGroup.members && selectedGroup.members.length > 0 ? (
-                    selectedGroup.members.map((member) => (
-                      <div key={member.id} className="p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h5 className="text-sm font-extrabold text-slate-900 truncate">
-                              {member.user_name || member.user_email}
-                            </h5>
-                            {member.roll_number && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                                ID #{member.roll_number}
+                    selectedGroup.members.map((member) => {
+                      const isCurrentUserCreator = String(selectedGroup.creator_id) === String(user?.id) || selectedGroup.members?.some((m) => String(m.user_id) === String(user?.id) && (m.role === 'creator' || m.role === 'leader'));
+                      const isThisMemberSelf = String(member.user_id) === String(user?.id);
+                      const isMemberCreator = member.role === 'creator' || String(member.user_id) === String(selectedGroup.creator_id);
+                      const isRemovingThis = removingMemberId === member.user_id;
+
+                      return (
+                        <div key={member.id} className="p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4 hover:bg-slate-50/70 transition-colors">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h5 className="text-sm font-extrabold text-slate-900 truncate">
+                                {member.user_name || member.user_email}
+                              </h5>
+                              {isThisMemberSelf && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                  You
+                                </span>
+                              )}
+                              {member.roll_number && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                  ID #{member.roll_number}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 truncate">{member.user_email}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isMemberCreator ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                Creator
+                              </span>
+                            ) : member.status === 'accepted' ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Active
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> Pending
                               </span>
                             )}
+
+                            {/* Remove Member Option for Group Creator */}
+                            {isCurrentUserCreator && !isMemberCreator && (
+                              <button
+                                type="button"
+                                disabled={isRemovingThis}
+                                onClick={() => handleRemoveMember(member.user_id, member.user_name || member.user_email)}
+                                className="p-1 sm:px-2.5 sm:py-1 rounded-xl text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                title={`Remove ${member.user_name || member.user_email} from group`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">
+                                  {isRemovingThis ? 'Removing...' : 'Remove'}
+                                </span>
+                              </button>
+                            )}
+
+                            {/* Leave Group Option for Non-Creator Self */}
+                            {isThisMemberSelf && !isMemberCreator && (
+                              <button
+                                type="button"
+                                disabled={isRemovingThis}
+                                onClick={() => handleRemoveMember(member.user_id, member.user_name || member.user_email)}
+                                className="p-1 sm:px-2.5 sm:py-1 rounded-xl text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                title="Leave this study group"
+                              >
+                                <UserMinus className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">
+                                  {isRemovingThis ? 'Leaving...' : 'Leave Group'}
+                                </span>
+                              </button>
+                            )}
                           </div>
-                          <p className="text-xs text-slate-500 truncate">{member.user_email}</p>
                         </div>
-                        {member.role === 'creator' ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">Creator</span>
-                        ) : member.status === 'accepted' ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" /> Active
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Pending
-                          </span>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="p-6 text-center text-xs text-slate-400">No members listed yet.</div>
                   )}
@@ -476,9 +584,19 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" /> Create group
-              </h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  title="Go Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                  <Sparkles className="w-5 h-5 text-indigo-600 shrink-0" /> Create group
+                </h3>
+              </div>
               <button onClick={() => setIsCreateModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100">
                 <X className="w-5 h-5" />
               </button>
@@ -511,8 +629,12 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
                 />
               </div>
               <div className="pt-2 action-stack">
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 min-h-11">
-                  Cancel
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 min-h-11 flex items-center justify-center gap-1.5"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
                 </button>
                 <button
                   type="submit"

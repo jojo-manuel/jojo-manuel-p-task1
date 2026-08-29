@@ -50,7 +50,8 @@ async function issueAuthResponse(user, message, status = 200) {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Initialize Database connection & schema on server start
 db.initDb();
@@ -214,7 +215,8 @@ async function buildGroupAssignmentProgress(assignmentId, groupId) {
     'SELECT * FROM assignment_submissions WHERE CAST(assignment_id AS TEXT) = CAST($1 AS TEXT)',
     [assignmentId]
   );
-  const submittedIds = new Set(
+  const groupHasSubmission = subsRes.rows.some((s) => String(s.group_id) === String(groupId));
+  const individualSubmittedIds = new Set(
     subsRes.rows
       .filter((s) => memberIds.includes(String(s.student_id)))
       .map((s) => String(s.student_id))
@@ -225,7 +227,8 @@ async function buildGroupAssignmentProgress(assignmentId, groupId) {
     name: m.user_name || m.user_email,
     email: m.user_email,
     rollNumber: m.roll_number || null,
-    submitted: submittedIds.has(String(m.user_id))
+    role: m.role,
+    submitted: groupHasSubmission || individualSubmittedIds.has(String(m.user_id))
   }));
   const submittedCount = memberProgress.filter((m) => m.submitted).length;
   const memberCount = memberProgress.length;
@@ -864,6 +867,115 @@ app.post('/api/groups/:id/invite', authenticateToken, async (req, res) => {
   }
 });
 
+// 13b. Remove Member from Group Handler (Leader, Admin, or Self-Leave)
+const handleRemoveGroupMember = async (req, res) => {
+  try {
+    const groupId = String(req.params.id || req.params.groupId || '');
+    const targetUserId = String(req.params.userId || (req.body && req.body.userId) || '');
+
+    if (!groupId || !targetUserId) {
+      return res.status(400).json({ message: 'Group ID and User ID are required' });
+    }
+
+    const groupResult = await db.query('SELECT * FROM groups WHERE id = $1', [groupId]);
+    if (groupResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+    const group = groupResult.rows[0];
+
+    // Find caller's role in this group
+    const callerMemberRes = await db.query(
+      'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, req.user.id]
+    );
+    const callerMember = callerMemberRes.rows[0];
+    const isCallerLeader = idsMatch(group.creator_id, req.user.id) || (callerMember && (callerMember.role === 'creator' || callerMember.role === 'leader'));
+    const isCallerAdmin = req.user.role === 'admin';
+    const isSelfLeaving = idsMatch(req.user.id, targetUserId);
+
+    if (!isCallerLeader && !isCallerAdmin && !isSelfLeaving) {
+      return res.status(403).json({ message: 'Only the Group Leader or Admin can remove members from this group' });
+    }
+
+    // Check target member
+    const targetMemberRes = await db.query(
+      'SELECT * FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, targetUserId]
+    );
+
+    if (targetMemberRes.rows.length === 0) {
+      return res.status(404).json({ message: 'Student is not a member of this group' });
+    }
+    const targetMember = targetMemberRes.rows[0];
+
+    // Creator cannot be removed (group must be deleted or ownership transferred)
+    if (idsMatch(group.creator_id, targetUserId) && !isCallerAdmin) {
+      return res.status(400).json({ message: 'The Group Creator cannot be removed from the group' });
+    }
+
+    // Delete member record
+    await db.query(
+      'DELETE FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, targetUserId]
+    );
+
+    // If removed by leader/admin, send an in-app notice to the removed user
+    if (!isSelfLeaving) {
+      const actorRes = await db.query('SELECT name, email FROM users WHERE id = $1', [req.user.id]);
+      const actorName = (actorRes.rows[0] && (actorRes.rows[0].name || actorRes.rows[0].email)) || 'Group Leader';
+      try {
+        await db.query(
+          'INSERT INTO notifications (user_id, sender_id, group_id, type, title, message, status, invitation_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [
+            targetUserId,
+            req.user.id,
+            groupId,
+            'group_notice',
+            'Removed from Group',
+            `You were removed from "${group.name}" by ${actorName}.`,
+            'unread',
+            'none'
+          ]
+        );
+      } catch (notifyErr) {
+        console.error('Error sending removal notice:', notifyErr);
+      }
+    }
+
+    // Fetch updated members list
+    const updatedMembersRes = await db.query(
+      'SELECT * FROM group_members WHERE group_id = $1',
+      [groupId]
+    );
+
+    const userRes = await db.query('SELECT id, name, email, roll_number FROM users');
+    const allUsers = userRes.rows;
+    const populatedMembers = updatedMembersRes.rows.map((m) => {
+      const u = allUsers.find((user) => idsMatch(user.id, m.user_id)) || {};
+      return {
+        ...m,
+        user_name: u.name || u.email,
+        user_email: u.email,
+        roll_number: u.roll_number
+      };
+    });
+
+    res.json({
+      message: isSelfLeaving
+        ? `You left the group "${group.name}" successfully.`
+        : `${targetMember.user_name || targetMember.user_email || 'Student'} was removed from "${group.name}".`,
+      members: populatedMembers
+    });
+  } catch (error) {
+    console.error('Remove Group Member Error:', error);
+    res.status(500).json({ message: 'Failed to remove member from group' });
+  }
+};
+
+app.delete('/api/groups/:id/members/:userId', authenticateToken, handleRemoveGroupMember);
+app.post('/api/groups/:id/members/:userId/remove', authenticateToken, handleRemoveGroupMember);
+app.post('/api/groups/:id/remove-member', authenticateToken, handleRemoveGroupMember);
+
 // 14. Get Notifications Endpoint
 app.get('/api/notifications', authenticateToken, async (req, res) => {
   try {
@@ -1493,17 +1605,31 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
     const myAssignmentIds = new Set(assignments.map((a) => String(a.id)));
     const submissions = subsRes.rows.filter((s) => myAssignmentIds.has(String(s.assignment_id)));
 
-    // Populate student name/email and assignment title on recent submissions
+    // Construct global student-to-group map across all groups
+    const globalStudentGroupMap = {};
+    for (const g of groups) {
+      const gMemRes = await db.query(
+        "SELECT user_id FROM group_members WHERE group_id = $1 AND (LOWER(status) = 'accepted' OR LOWER(role) = 'creator')",
+        [g.id]
+      );
+      gMemRes.rows.forEach((m) => {
+        globalStudentGroupMap[String(m.user_id)] = g.name;
+      });
+    }
+
+    // Populate student name/email, group name, and assignment title on recent submissions
     const recentSubmissions = await Promise.all(
       submissions.slice(0, 30).map(async (sub) => {
         const studentRes = await db.query('SELECT name, email, roll_number FROM users WHERE id = $1', [sub.student_id]);
         const asgn = assignments.find((a) => String(a.id) === String(sub.assignment_id));
         const student = studentRes.rows[0] || {};
+        const matchedGroup = groups.find((g) => idsMatch(g.id, sub.group_id));
         return {
           ...sub,
           student_name: student.name || student.email || 'Student',
           student_email: student.email || '',
           roll_number: student.roll_number || sub.roll_number || null,
+          group_name: matchedGroup ? matchedGroup.name : (globalStudentGroupMap[String(sub.student_id)] || null),
           assignment_title: asgn ? asgn.title : 'Coursework Assignment',
           submitted_at: sub.submitted_at || sub.created_at
         };
@@ -1515,36 +1641,130 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
       assignments.map(async (asgn) => {
         const asgnSubs = submissions.filter((s) => idsMatch(s.assignment_id, asgn.id));
         const assignedGroupIds = parseAssignedGroupIds(asgn.assigned_group_ids);
+        const isGroupTarget = asgn.assigned_to_type === 'groups' && assignedGroupIds.length > 0;
 
         // Determine target groups for this assignment
-        const targetGroups = asgn.assigned_to_type === 'groups' && assignedGroupIds.length > 0
+        const targetGroups = isGroupTarget
           ? groups.filter((g) => assignedGroupIds.some((id) => idsMatch(g.id, id)))
           : groups;
 
         // Group breakdown for this specific project/assignment
+        const groupMembersMap = {};
         const groupBreakdown = await Promise.all(
           targetGroups.map(async (group) => {
             const membersRes = await db.query(
               "SELECT * FROM group_members WHERE group_id = $1 AND (LOWER(status) = 'accepted' OR LOWER(role) = 'creator')",
               [group.id]
             );
-            const memberCount = membersRes.rows.length;
-            const groupSubs = asgnSubs.filter((s) => idsMatch(s.group_id, group.id));
-            const subCount = groupSubs.length;
+            const memberRows = membersRes.rows;
+            const groupMembers = memberRows.map((gm) => {
+              const matchedStudent = students.find((st) => idsMatch(st.id, gm.user_id)) || {};
+              const sub = asgnSubs.find((s) => idsMatch(s.student_id, gm.user_id));
+              return {
+                userId: gm.user_id,
+                name: matchedStudent.name || matchedStudent.email || 'Student',
+                email: matchedStudent.email || '',
+                rollNumber: matchedStudent.roll_number || null,
+                phone: matchedStudent.phone || null,
+                school: matchedStudent.school || null,
+                role: gm.role,
+                submitted: Boolean(sub),
+                submittedAt: sub ? (sub.submitted_at || sub.created_at) : null,
+                grade: sub ? sub.grade : null,
+                feedback: sub ? sub.feedback : null,
+                submissionLink: sub ? sub.submission_link : null,
+                submissionNotes: sub ? sub.submission_notes : null
+              };
+            });
+
+            groupMembers.forEach((m) => {
+              groupMembersMap[String(m.userId)] = group.name;
+            });
+
+            const memberCount = groupMembers.length;
+            const subCount = groupMembers.filter((m) => m.submitted).length;
             const rate = memberCount > 0 ? Math.round((subCount / memberCount) * 100) : (subCount > 0 ? 100 : 0);
             return {
               groupId: group.id,
               groupName: group.name,
               memberCount,
               submissionCount: subCount,
-              completionRate: Math.min(rate, 100)
+              completionRate: Math.min(rate, 100),
+              members: groupMembers
             };
           })
         );
 
-        const totalSubmitted = asgnSubs.length;
+        // Determine target students
+        let targetStudentList = [];
+        if (isGroupTarget) {
+          const uniqueTargetUserIds = new Set();
+          groupBreakdown.forEach((gb) => {
+            gb.members.forEach((m) => {
+              if (!uniqueTargetUserIds.has(String(m.userId))) {
+                uniqueTargetUserIds.add(String(m.userId));
+                targetStudentList.push(m);
+              }
+            });
+          });
+        } else {
+          targetStudentList = students.map((s) => ({
+            userId: s.id,
+            name: s.name || s.email,
+            email: s.email,
+            rollNumber: s.roll_number,
+            phone: s.phone,
+            school: s.school,
+            class: s.class
+          }));
+        }
+
+        // Build list of submitted students
+        const submittedStudents = asgnSubs.map((sub) => {
+          const matchedStudent = students.find((s) => idsMatch(s.id, sub.student_id)) || {};
+          const matchedGroup = groups.find((g) => idsMatch(g.id, sub.group_id));
+          const resolvedGroupName = matchedGroup ? matchedGroup.name : (groupMembersMap[String(sub.student_id)] || globalStudentGroupMap[String(sub.student_id)] || null);
+          return {
+            id: sub.id,
+            submissionId: sub.id,
+            assignmentId: asgn.id,
+            studentId: sub.student_id,
+            studentName: matchedStudent.name || sub.student_name || matchedStudent.email || 'Student',
+            studentEmail: matchedStudent.email || sub.student_email || '',
+            rollNumber: matchedStudent.roll_number || sub.roll_number || null,
+            phone: matchedStudent.phone || null,
+            school: matchedStudent.school || null,
+            groupName: resolvedGroupName,
+            submittedAt: sub.submitted_at || sub.created_at,
+            submissionLink: sub.submission_link,
+            submissionNotes: sub.submission_notes,
+            grade: sub.grade || null,
+            feedback: sub.feedback || null,
+            gradedAt: sub.graded_at || null
+          };
+        });
+
+        // Build list of not-submitted students
+        const submittedUserIds = new Set(asgnSubs.map((s) => String(s.student_id)));
+        const isPastDue = asgn.due_date ? new Date(asgn.due_date).getTime() < Date.now() : false;
+
+        const notSubmittedStudents = targetStudentList
+          .filter((st) => !submittedUserIds.has(String(st.userId || st.id)))
+          .map((st) => ({
+            studentId: st.userId || st.id,
+            studentName: st.name || st.email || 'Student',
+            studentEmail: st.email || '',
+            rollNumber: st.rollNumber || st.roll_number || null,
+            phone: st.phone || null,
+            school: st.school || null,
+            groupName: groupMembersMap[String(st.userId || st.id)] || globalStudentGroupMap[String(st.userId || st.id)] || null,
+            isOverdue: isPastDue
+          }));
+
+        const totalSubmitted = submittedStudents.length;
         const totalTargetGroups = targetGroups.length;
-        const totalTargetStudents = groupBreakdown.reduce((acc, gb) => acc + gb.memberCount, 0);
+        const totalTargetStudents = targetStudentList.length;
+        const totalNotSubmitted = Math.max(0, totalTargetStudents - totalSubmitted);
 
         const overallProjectRate = totalTargetStudents > 0
           ? Math.round((totalSubmitted / totalTargetStudents) * 100)
@@ -1554,14 +1774,20 @@ app.get('/api/admin/analytics', authenticateToken, requireAdmin, async (req, res
           id: asgn.id,
           title: asgn.title,
           description: asgn.description,
+          courseName: asgn.course_name || 'General Coursework',
           assignedToType: asgn.assigned_to_type,
           dueDate: asgn.due_date,
           onedriveLink: asgn.onedrive_link,
+          questionPaperUrl: asgn.question_paper_url,
+          questionPaperName: asgn.question_paper_name,
           totalSubmitted,
+          totalNotSubmitted,
           totalTargetGroups,
           totalTargetStudents,
           overallProjectRate: Math.min(overallProjectRate, 100),
-          groupBreakdown
+          groupBreakdown,
+          submittedStudents,
+          notSubmittedStudents
         };
       })
     );
@@ -1655,7 +1881,7 @@ app.get('/api/courses', authenticateToken, async (req, res) => {
     // If courses table is empty, derive dynamic courses from active assignments
     if (courses.length === 0) {
       const asgnsRes = await db.query('SELECT DISTINCT course_name FROM assignments');
-      courses = asgnsRes.rows.map((row, idx) => ({
+      courses = (asgnsRes.rows || []).map((row, idx) => ({
         id: idx + 1,
         course_code: `COURSE-${idx + 101}`,
         course_name: row.course_name || 'General Coursework',
@@ -1677,19 +1903,62 @@ app.post('/api/courses', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Course name is required' });
     }
 
-    const code = courseCode ? courseCode.trim().toUpperCase() : `CS-${Math.floor(100 + Math.random() * 900)}`;
+    const code = courseCode && courseCode.trim() ? courseCode.trim().toUpperCase() : `CS-${Math.floor(100 + Math.random() * 900)}`;
     const result = await db.query(
       'INSERT INTO courses (course_code, course_name, description, professor_id) VALUES ($1, $2, $3, $4) RETURNING *',
       [code, courseName.trim(), description ? description.trim() : '', req.user.id]
     );
 
+    const createdCourse = (result.rows && result.rows[0]) || {
+      id: Date.now(),
+      course_code: code,
+      course_name: courseName.trim(),
+      description: description ? description.trim() : '',
+      created_at: new Date().toISOString()
+    };
+
     res.status(201).json({
       message: 'Course created successfully!',
-      course: result.rows[0]
+      course: createdCourse
     });
   } catch (error) {
     console.error('Create Course Error:', error);
-    res.status(500).json({ message: 'Failed to create course' });
+    res.status(500).json({ message: error.message || 'Failed to create course' });
+  }
+});
+
+app.put('/api/courses/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const { courseCode, courseName, description } = req.body || {};
+
+    if (!courseName || !courseName.trim()) {
+      return res.status(400).json({ message: 'Course name is required' });
+    }
+
+    const result = await db.query(
+      'UPDATE courses SET course_code = $1, course_name = $2, description = $3 WHERE id = $4 RETURNING *',
+      [courseCode ? courseCode.trim().toUpperCase() : 'CS-101', courseName.trim(), description ? description.trim() : '', courseId]
+    );
+
+    res.json({
+      message: 'Course updated successfully!',
+      course: (result.rows && result.rows[0]) || null
+    });
+  } catch (error) {
+    console.error('Update Course Error:', error);
+    res.status(500).json({ message: error.message || 'Failed to update course' });
+  }
+});
+
+app.delete('/api/courses/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    await db.query('DELETE FROM courses WHERE id = $1', [courseId]);
+    res.json({ message: 'Course deleted successfully!' });
+  } catch (error) {
+    console.error('Delete Course Error:', error);
+    res.status(500).json({ message: error.message || 'Failed to delete course' });
   }
 });
 

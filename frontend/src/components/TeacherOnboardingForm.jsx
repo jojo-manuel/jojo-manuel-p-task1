@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { User, Hash, Phone, School, ArrowRight, AlertTriangle } from 'lucide-react';
+import { User, Hash, Phone, School, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
 
-export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, error }) {
+export default function TeacherOnboardingForm({ user, onSubmitDetails, onBack, loading, error }) {
   const splitName = (user?.name || '').trim().split(' ');
   const initialFirstName = splitName[0] || '';
   const initialLastName = splitName.slice(1).join(' ') || '';
@@ -26,6 +26,16 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, loading, 
   return (
     <div className="w-full max-w-lg mx-auto my-4 sm:my-8 animate-fade-up text-left text-slate-800">
       <div className="classic-card p-5 sm:p-8 bg-white space-y-6">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all group"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+          </button>
+        )}
         <div className="space-y-1">
           <p className="text-sm text-slate-500">Faculty registration</p>
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight">

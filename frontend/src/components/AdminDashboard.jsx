@@ -21,14 +21,34 @@ import {
   FileText,
   Send,
   AlertCircle,
+  AlertTriangle,
   Upload,
   UserCheck,
-  Award
+  UserX,
+  Award,
+  GraduationCap,
+  FolderPlus,
+  Plus,
+  ArrowLeft,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { DateTimeField } from './AnchoredPopover';
+import { useToast } from './Toast';
 
-export default function AdminDashboard({ token }) {
+export default function AdminDashboard({ token, navHomeTrigger }) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('assignments');
+
+  // React to top Navbar Joineazy click -> navigate back to assignments home
+  useEffect(() => {
+    if (navHomeTrigger) {
+      setActiveTab('assignments');
+      setIsModalOpen(false);
+      setIsCourseModalOpen(false);
+      setGradingSub(null);
+    }
+  }, [navHomeTrigger]);
 
   // Directory state
   const [students, setStudents] = useState([]);
@@ -41,6 +61,21 @@ export default function AdminDashboard({ token }) {
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [asgnError, setAsgnError] = useState(null);
 
+  // Courses state
+  const [courses, setCourses] = useState([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [courseError, setCourseError] = useState(null);
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
+
+  // Course Modal State (Create / Edit)
+  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [courseFormName, setCourseFormName] = useState('');
+  const [courseFormCode, setCourseFormCode] = useState('');
+  const [courseFormDesc, setCourseFormDesc] = useState('');
+  const [savingCourse, setSavingCourse] = useState(false);
+  const [courseModalError, setCourseModalError] = useState(null);
+
   // Groups list (for assigning work to specific groups)
   const [availableGroups, setAvailableGroups] = useState([]);
 
@@ -50,6 +85,8 @@ export default function AdminDashboard({ token }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [courseName, setCourseName] = useState('Physics 101');
+  const [isCustomCourse, setIsCustomCourse] = useState(false);
+  const [customCourseCode, setCustomCourseCode] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [onedriveLink, setOnedriveLink] = useState('');
   const [assignedToType, setAssignedToType] = useState('all');
@@ -63,6 +100,10 @@ export default function AdminDashboard({ token }) {
   // Analytics state
   const [analytics, setAnalytics] = useState(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [selectedAnalyticsAsgnId, setSelectedAnalyticsAsgnId] = useState(null);
+  const [analyticsSubTab, setAnalyticsSubTab] = useState('submitted');
+  const [studentAnalyticsSearch, setStudentAnalyticsSearch] = useState('');
+  const [assignmentSearchTerm, setAssignmentSearchTerm] = useState('');
 
   // Grading Modal State
   const [gradingSub, setGradingSub] = useState(null);
@@ -113,6 +154,27 @@ export default function AdminDashboard({ token }) {
     }
   };
 
+  const fetchCourses = async () => {
+    setLoadingCourses(true);
+    setCourseError(null);
+    try {
+      const res = await fetch('/api/courses', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.courses) {
+        setCourses(data.courses);
+      } else {
+        setCourseError(data.message || 'Failed to load courses');
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+      setCourseError('Network error fetching courses');
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
   const fetchAnalyticsAndGroups = async () => {
     setLoadingAnalytics(true);
     try {
@@ -125,6 +187,14 @@ export default function AdminDashboard({ token }) {
         if (data.groupPerformance) {
           setAvailableGroups(data.groupPerformance);
         }
+        if (data.assignmentPerformance && data.assignmentPerformance.length > 0) {
+          setSelectedAnalyticsAsgnId((prev) => {
+            if (prev && data.assignmentPerformance.some((a) => String(a.id) === String(prev))) {
+              return prev;
+            }
+            return data.assignmentPerformance[0].id;
+          });
+        }
       }
     } catch (err) {
       console.error('Error fetching analytics:', err);
@@ -135,16 +205,106 @@ export default function AdminDashboard({ token }) {
 
   useEffect(() => {
     fetchAssignments();
+    fetchCourses();
     fetchAnalyticsAndGroups();
     fetchStudents();
   }, [token]);
 
+  // Course Modal Handlers
+  const handleOpenCreateCourseModal = () => {
+    setEditingCourse(null);
+    setCourseFormName('');
+    setCourseFormCode('');
+    setCourseFormDesc('');
+    setCourseModalError(null);
+    setIsCourseModalOpen(true);
+  };
+
+  const handleOpenEditCourseModal = (course) => {
+    setEditingCourse(course);
+    setCourseFormName(course.course_name || '');
+    setCourseFormCode(course.course_code || '');
+    setCourseFormDesc(course.description || '');
+    setCourseModalError(null);
+    setIsCourseModalOpen(true);
+  };
+
+  const handleSaveCourse = async (e) => {
+    e.preventDefault();
+    if (!courseFormName.trim()) {
+      setCourseModalError('Please enter a valid course name');
+      return;
+    }
+
+    setSavingCourse(true);
+    setCourseModalError(null);
+    try {
+      const url = editingCourse ? `/api/courses/${editingCourse.id}` : '/api/courses';
+      const method = editingCourse ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          courseName: courseFormName.trim(),
+          courseCode: courseFormCode.trim() || undefined,
+          description: courseFormDesc.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to save course');
+      }
+
+      setIsCourseModalOpen(false);
+      await fetchCourses();
+      await fetchAnalyticsAndGroups();
+      toast.success(editingCourse ? 'Course details updated!' : `Course "${courseFormName.trim()}" created successfully!`);
+    } catch (err) {
+      console.error('Save course error:', err);
+      setCourseModalError(err.message || 'Error occurred while saving course');
+      toast.error(err.message || 'Failed to save course');
+    } finally {
+      setSavingCourse(false);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId) => {
+    if (!window.confirm('Are you sure you want to delete this course?')) return;
+    try {
+      const res = await fetch(`/api/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        await fetchCourses();
+        await fetchAnalyticsAndGroups();
+        toast.success('Course removed successfully');
+      } else {
+        const data = await res.json();
+        toast.error(data.message || 'Failed to delete course');
+      }
+    } catch (err) {
+      console.error('Delete course error:', err);
+      toast.error('Network error deleting course');
+    }
+  };
+
   // Open modal for new assignment
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = (prefillCourseName) => {
     setEditingAsgn(null);
     setTitle('');
     setDescription('');
-    setCourseName('Physics 101');
+    const defaultCourse = typeof prefillCourseName === 'string' && prefillCourseName
+      ? prefillCourseName
+      : (courses[0]?.course_name || 'Physics 101');
+    setCourseName(defaultCourse);
+    setIsCustomCourse(false);
+    setCustomCourseCode('');
     setDueDate('');
     setOnedriveLink('');
     setAssignedToType('all');
@@ -160,7 +320,11 @@ export default function AdminDashboard({ token }) {
     setEditingAsgn(asgn);
     setTitle(asgn.title || '');
     setDescription(asgn.description || '');
-    setCourseName(asgn.course_name || 'General Coursework');
+    const cName = asgn.course_name || 'General Coursework';
+    setCourseName(cName);
+    const exists = courses.some((c) => c.course_name === cName);
+    setIsCustomCourse(!exists);
+    setCustomCourseCode('');
     setDueDate(asgn.due_date ? new Date(asgn.due_date).toISOString().slice(0, 16) : '');
     setOnedriveLink(asgn.onedrive_link || '');
     setAssignedToType(asgn.assigned_to_type || 'all');
@@ -183,11 +347,13 @@ export default function AdminDashboard({ token }) {
 
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       setModalError('Please select a valid PDF file (.pdf)');
+      toast.error('Invalid file format. Please choose a .pdf document.');
       return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
       setModalError('PDF file size must be less than 15MB');
+      toast.error('File too large. Maximum PDF size is 15MB.');
       return;
     }
 
@@ -198,10 +364,12 @@ export default function AdminDashboard({ token }) {
       setQuestionPaperUrl(event.target.result);
       setQuestionPaperName(file.name);
       setPdfUploading(false);
+      toast.success(`Attached "${file.name}"`);
     };
     reader.onerror = () => {
       setModalError('Failed to read PDF file');
       setPdfUploading(false);
+      toast.error('Failed to read PDF file');
     };
     reader.readAsDataURL(file);
   };
@@ -209,21 +377,49 @@ export default function AdminDashboard({ token }) {
   const handleRemovePdf = () => {
     setQuestionPaperUrl('');
     setQuestionPaperName('');
+    toast.info('Attached PDF document removed');
   };
 
   // Save assignment (Create / Update)
   const handleSaveAssignment = async (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setModalError('Assignment title is required');
+      toast.warning('Please enter an assignment title');
+      return;
+    }
 
     if (dueDate && new Date(dueDate).getTime() < Date.now() - 60000) {
       setModalError('Assignment due date cannot be set in the past');
+      toast.error('Assignment due date cannot be set in the past');
       return;
     }
+
+    const resolvedCourse = courseName.trim() || 'General Coursework';
 
     setSavingAsgn(true);
     setModalError(null);
     try {
+      // Auto-register course if custom and doesn't exist yet
+      if (isCustomCourse && resolvedCourse && !courses.some(c => c.course_name.toLowerCase() === resolvedCourse.toLowerCase())) {
+        try {
+          await fetch('/api/courses', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              courseName: resolvedCourse,
+              courseCode: customCourseCode.trim() || undefined,
+              description: `Curriculum for ${resolvedCourse}`
+            })
+          });
+        } catch (cErr) {
+          console.warn('Auto-course creation note:', cErr.message);
+        }
+      }
+
       const url = editingAsgn ? `/api/assignments/${editingAsgn.id}` : '/api/assignments';
       const method = editingAsgn ? 'PUT' : 'POST';
 
@@ -236,7 +432,7 @@ export default function AdminDashboard({ token }) {
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim(),
-          courseName: courseName.trim() || 'General Coursework',
+          courseName: resolvedCourse,
           dueDate: dueDate || null,
           onedriveLink: onedriveLink.trim() || null,
           assignedToType,
@@ -252,9 +448,12 @@ export default function AdminDashboard({ token }) {
 
       setIsModalOpen(false);
       await fetchAssignments();
+      await fetchCourses();
       await fetchAnalyticsAndGroups();
+      toast.success(editingAsgn ? `Assignment "${title.trim()}" updated!` : `Assignment "${title.trim()}" published successfully!`);
     } catch (err) {
-      setModalError(err.message);
+      setModalError(err.message || 'Network error saving assignment');
+      toast.error(err.message || 'Failed to save assignment');
     } finally {
       setSavingAsgn(false);
     }
@@ -271,9 +470,14 @@ export default function AdminDashboard({ token }) {
       if (res.ok) {
         await fetchAssignments();
         await fetchAnalyticsAndGroups();
+        toast.success('Assignment deleted successfully');
+      } else {
+        const data = await res.json();
+        toast.error(data.message || 'Failed to delete assignment');
       }
     } catch (err) {
       console.error('Error deleting assignment:', err);
+      toast.error('Network error deleting assignment');
     }
   };
 
@@ -300,11 +504,14 @@ export default function AdminDashboard({ token }) {
         throw new Error(data.message || 'Failed to submit grade');
       }
 
+      const studentName = gradingSub.student_name || 'Student';
       setGradingSub(null);
       await fetchAnalyticsAndGroups();
       await fetchAssignments();
+      toast.success(`Grade "${gradeValue.trim()}" saved for ${studentName}!`);
     } catch (err) {
       setGradeError(err.message);
+      toast.error(err.message || 'Failed to save grade');
     } finally {
       setGradingLoading(false);
     }
@@ -322,23 +529,49 @@ export default function AdminDashboard({ token }) {
     );
   });
 
+  const filteredCourses = courses.filter((c) => {
+    const term = courseSearchTerm.toLowerCase();
+    return (
+      (c.course_name && c.course_name.toLowerCase().includes(term)) ||
+      (c.course_code && c.course_code.toLowerCase().includes(term)) ||
+      (c.description && c.description.toLowerCase().includes(term))
+    );
+  });
+
   return (
     <div className="w-full space-y-5 animate-fade-up text-left">
       <section className="mb-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">Assignments</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
+              {activeTab === 'assignments' && 'Assignments & Coursework'}
+              {activeTab === 'courses' && 'Courses & Curriculum'}
+              {activeTab === 'analytics' && 'Analytics & Performance'}
+              {activeTab === 'directory' && 'Student Directory'}
+            </h1>
             <p className="text-sm text-slate-500 mt-1 max-w-xl">
-              Post coursework, assign it to the class or a group, and track confirmations.
+              {activeTab === 'assignments' && 'Post coursework, assign tasks to classes or groups, and track student submissions.'}
+              {activeTab === 'courses' && 'Create and manage your course subjects, syllabus items, and class enrollments.'}
+              {activeTab === 'analytics' && 'Review group completion rates, submission trends, and grade student submissions.'}
+              {activeTab === 'directory' && 'Browse enrolled students, review roll numbers, and view contact details.'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="btn-primary w-full sm:w-auto min-h-10"
-          >
-            <PlusCircle className="w-4 h-4" /> New assignment
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            <button
+              type="button"
+              onClick={handleOpenCreateCourseModal}
+              className="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-all flex items-center justify-center gap-1.5 min-h-10 shrink-0"
+            >
+              <FolderPlus className="w-4 h-4" /> Add Course
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOpenCreateModal()}
+              className="btn-primary w-full sm:w-auto min-h-10"
+            >
+              <PlusCircle className="w-4 h-4" /> New Assignment
+            </button>
+          </div>
         </div>
       </section>
 
@@ -350,6 +583,14 @@ export default function AdminDashboard({ token }) {
         >
           <BookOpen className="w-4 h-4" /> Assignments
           <span className="text-xs opacity-70">({assignments.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('courses')}
+          className={`portal-tab ${activeTab === 'courses' ? 'is-active' : ''}`}
+        >
+          <GraduationCap className="w-4 h-4" /> Courses
+          <span className="text-xs opacity-70">({courses.length})</span>
         </button>
         <button
           type="button"
@@ -367,6 +608,23 @@ export default function AdminDashboard({ token }) {
           <span className="text-xs opacity-70">({students.length})</span>
         </button>
       </nav>
+
+      {/* Back to Assignments button when viewing other tabs */}
+      {activeTab !== 'assignments' && (
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('assignments')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-sm group"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Assignments</span>
+          </button>
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl">
+            Section: <strong className="text-slate-800 capitalize">{activeTab}</strong>
+          </span>
+        </div>
+      )}
 
       {/* TAB 1: ASSIGNMENTS MANAGEMENT */}
       {activeTab === 'assignments' && (
@@ -389,117 +647,103 @@ export default function AdminDashboard({ token }) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-4">
               {assignments.map((asgn) => {
                 const isGroupTarget = asgn.assigned_to_type === 'groups';
 
                 return (
                   <div
                     key={asgn.id}
-                    className="classic-card rounded-2xl sm:rounded-xl p-4 sm:p-6 bg-white border border-slate-200 shadow-md space-y-4 flex flex-col justify-between hover:border-emerald-300 transition-all min-w-0"
+                    className="classic-card rounded-2xl p-5 sm:p-6 bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all min-w-0 flex flex-col md:flex-row md:items-center justify-between gap-5"
                   >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              {asgn.course_name || 'General Coursework'}
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                isGroupTarget
-                                  ? 'bg-purple-50 text-purple-700 border-purple-200'
-                                  : 'bg-blue-50 text-blue-700 border-blue-200'
-                              }`}
-                            >
-                              {isGroupTarget ? 'Target: Specific Groups' : 'Target: All Students'}
-                            </span>
-                            {asgn.due_date && (
-                              <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-slate-400" /> Due:{' '}
-                                {new Date(asgn.due_date).toLocaleDateString([], {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-base font-semibold text-slate-900">{asgn.title}</h3>
-                        </div>
-
-                        <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-semibold shrink-0">
+                    <div className="space-y-3 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {asgn.course_name || 'General Coursework'}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-lg border ${
+                            isGroupTarget
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}
+                        >
+                          {isGroupTarget ? 'Target: Specific Groups' : 'Target: All Students'}
+                        </span>
+                        {asgn.due_date && (
+                          <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-500" /> Due:{' '}
+                            {new Date(asgn.due_date).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        )}
+                        <span className="badge bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
                           {asgn.submissionCount || 0} Submitted
                         </span>
                       </div>
 
-                      {asgn.description && (
-                        <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                          {asgn.description}
-                        </p>
-                      )}
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 tracking-tight">{asgn.title}</h3>
+                        {asgn.description && (
+                          <p className="text-xs text-slate-600 leading-relaxed font-medium mt-1">
+                            {asgn.description}
+                          </p>
+                        )}
+                      </div>
 
-                      {/* OneDrive Material Link */}
-                      {asgn.onedrive_link && (
-                        <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                              ☁
-                            </div>
-                            <span className="text-xs font-bold text-indigo-950 truncate">
-                              OneDrive materials
-                            </span>
-                          </div>
+                      {/* Material & PDF attachment links row */}
+                      <div className="flex items-center gap-3 flex-wrap pt-1">
+                        {asgn.onedrive_link && (
                           <a
                             href={asgn.onedrive_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full sm:w-auto justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0 min-h-10"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all shadow-sm"
                           >
-                            Open <ExternalLink className="w-3.5 h-3.5" />
+                            <span>☁ OneDrive Materials</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </a>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Attached Question Paper PDF */}
-                      {asgn.question_paper_url && (
-                        <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                            <span className="text-xs font-bold text-emerald-950 truncate">
-                              {asgn.question_paper_name || 'Question Paper (PDF)'}
-                            </span>
-                          </div>
+                        {asgn.question_paper_url && (
                           <a
                             href={asgn.question_paper_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             download={asgn.question_paper_name || 'question_paper.pdf'}
-                            className="w-full sm:w-auto justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex items-center gap-1 shrink-0 min-h-10 shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition-all shadow-sm"
                           >
-                            View PDF <ExternalLink className="w-3.5 h-3.5" />
+                            <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{asgn.question_paper_name || 'Question Paper (PDF)'}</span>
+                            <ExternalLink className="w-3.5 h-3.5 text-emerald-500" />
                           </a>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex flex-col xs:flex-row sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                    {/* Actions & timestamp column */}
+                    <div className="flex md:flex-col items-center md:items-end justify-between gap-3 pt-3 md:pt-0 border-t md:border-t-0 md:border-l border-slate-100 md:pl-5 shrink-0">
                       <span className="text-[11px] text-slate-400 font-semibold">
-                        Created {new Date(asgn.created_at).toLocaleDateString()}
+                        Posted {new Date(asgn.created_at).toLocaleDateString()}
                       </span>
 
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => handleOpenEditModal(asgn)}
-                          className="flex-1 sm:flex-none justify-center p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all text-xs font-bold flex items-center gap-1 min-h-10"
+                          className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all text-xs font-bold flex items-center gap-1.5 min-h-9"
                           title="Edit Assignment"
                         >
                           <Edit className="w-3.5 h-3.5" /> Edit
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDeleteAssignment(asgn.id)}
-                          className="flex-1 sm:flex-none justify-center p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all text-xs font-bold flex items-center gap-1 min-h-10"
+                          className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all text-xs font-bold flex items-center gap-1.5 min-h-9"
                           title="Delete Assignment"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -514,7 +758,139 @@ export default function AdminDashboard({ token }) {
         </div>
       )}
 
-      {/* TAB 2: ANALYTICS & GROUP PERFORMANCE */}
+      {/* TAB 2: COURSES & CURRICULUM MANAGEMENT */}
+      {activeTab === 'courses' && (
+        <div className="space-y-6">
+          <div className="classic-card rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={courseSearchTerm}
+                onChange={(e) => setCourseSearchTerm(e.target.value)}
+                className="classic-input pl-10 text-xs py-2.5"
+                placeholder="Search course code, subject name..."
+              />
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              <span className="text-xs text-slate-600 font-bold">
+                Total Courses: <strong className="text-indigo-700">{filteredCourses.length}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={handleOpenCreateCourseModal}
+                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5"
+              >
+                <FolderPlus className="w-3.5 h-3.5" /> + New Course
+              </button>
+            </div>
+          </div>
+
+          {loadingCourses ? (
+            <div className="text-center py-12 classic-card rounded-xl bg-white space-y-2">
+              <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
+              <p className="text-xs text-slate-500 font-semibold">Loading courses directory...</p>
+            </div>
+          ) : courseError ? (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+              {courseError}
+            </div>
+          ) : filteredCourses.length === 0 ? (
+            <div className="text-center py-12 classic-card rounded-xl bg-white border border-slate-200 space-y-3">
+              <GraduationCap className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">No courses found</h3>
+              <p className="text-sm text-slate-500 max-w-sm mx-auto">
+                Create your first course to organize coursework, question papers, and assignments.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenCreateCourseModal}
+                className="btn-primary inline-flex items-center gap-1.5 text-xs mt-2"
+              >
+                <PlusCircle className="w-4 h-4" /> Create First Course
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredCourses.map((c) => {
+                const asgnCount = assignments.filter((a) => (a.course_name || 'General Coursework') === c.course_name).length;
+                return (
+                  <div
+                    key={c.id || c.course_code || c.course_name}
+                    className="classic-card rounded-2xl p-5 bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between space-y-4"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm shrink-0 shadow-sm border border-indigo-100">
+                            <BookOpen className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 inline-block">
+                              {c.course_code || 'COURSE'}
+                            </span>
+                            <h4 className="text-sm font-bold text-slate-900 mt-1 truncate">
+                              {c.course_name}
+                            </h4>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditCourseModal(c)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                            title="Edit Course"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCourse(c.id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                            title="Delete Course"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {c.description ? (
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-2">
+                          {c.description}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No description added yet.</p>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <span className="font-semibold text-slate-700">Coursework Tasks:</span>
+                        <span className="badge badge-student text-xs font-bold">{asgnCount} {asgnCount === 1 ? 'Assignment' : 'Assignments'}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleOpenCreateModal(c.course_name);
+                          setActiveTab('assignments');
+                        }}
+                        className="w-full py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" /> Post Assignment in this Course
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: ANALYTICS & GROUP PERFORMANCE */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           {loadingAnalytics ? (
@@ -638,236 +1014,704 @@ export default function AdminDashboard({ token }) {
                 </div>
               </div>
 
-              {/* Faculty Projects & Assignment Group Performance Breakdown */}
-              <div className="classic-card p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
-                <div className="flex items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 min-w-0">
-                    <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">Faculty Projects & Assignment Group Performance</span>
-                  </h3>
-                  <span className="text-xs text-slate-500 font-semibold shrink-0">
-                    {analytics.assignmentPerformance?.length || 0} Projects
-                  </span>
-                </div>
+              {/* Interactive Assignment / Project Analytics Explorer */}
+              {(() => {
+                const asgns = analytics.assignmentPerformance || [];
+                const filteredAsgns = asgns.filter((a) =>
+                  !assignmentSearchTerm.trim() ||
+                  a.title?.toLowerCase().includes(assignmentSearchTerm.toLowerCase()) ||
+                  a.courseName?.toLowerCase().includes(assignmentSearchTerm.toLowerCase())
+                );
 
-                <div className="space-y-4">
-                  {analytics.assignmentPerformance && analytics.assignmentPerformance.length > 0 ? (
-                    analytics.assignmentPerformance.map((asgn) => (
-                      <div
-                        key={asgn.id}
-                        className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <h4 className="text-base font-extrabold text-slate-900">{asgn.title}</h4>
-                            <span className="text-[11px] font-semibold text-slate-500">
-                              Assigned to: {asgn.assignedToType === 'groups' ? 'Selected Study Groups' : 'All Students'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">
-                              {asgn.overallProjectRate}% Completed
-                            </span>
-                          </div>
+                const currentSelectedId = selectedAnalyticsAsgnId || (asgns[0] ? asgns[0].id : null);
+                const selectedAsgn = asgns.find((a) => String(a.id) === String(currentSelectedId)) || asgns[0] || null;
+
+                const submittedList = selectedAsgn?.submittedStudents || [];
+                const notSubmittedList = selectedAsgn?.notSubmittedStudents || [];
+                const groupBreakdown = selectedAsgn?.groupBreakdown || [];
+
+                const filteredSubmitted = submittedList.filter((s) =>
+                  !studentAnalyticsSearch.trim() ||
+                  s.studentName?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase()) ||
+                  s.studentEmail?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase()) ||
+                  s.rollNumber?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase()) ||
+                  s.groupName?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase())
+                );
+
+                const filteredNotSubmitted = notSubmittedList.filter((s) =>
+                  !studentAnalyticsSearch.trim() ||
+                  s.studentName?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase()) ||
+                  s.studentEmail?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase()) ||
+                  s.rollNumber?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase()) ||
+                  s.groupName?.toLowerCase().includes(studentAnalyticsSearch.toLowerCase())
+                );
+
+                return (
+                  <div className="space-y-6">
+                    {/* ASSIGNMENT DROPDOWN LIST SELECTOR */}
+                    <div className="classic-card p-4 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-md space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div>
+                          <h3 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5 text-indigo-600" />
+                            <span>Project & Assignment Analytics</span>
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Select an assignment from the dropdown list to inspect total analytics, submitted students, pending students, and group progress.
+                          </p>
                         </div>
+                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 self-start sm:self-auto">
+                          {asgns.length} Total Projects
+                        </span>
+                      </div>
 
-                        {/* Overall Progress Bar */}
-                        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-emerald-600 rounded-full transition-all"
-                            style={{ width: `${Math.min(asgn.overallProjectRate, 100)}%` }}
-                          />
+                      {asgns.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-slate-400">
+                          No assignments posted yet. Create an assignment to view analytics.
                         </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            Select Assignment / Coursework Project:
+                          </label>
 
-                        {/* Group performance breakdown per assignment */}
-                        {asgn.groupBreakdown && asgn.groupBreakdown.length > 0 && (
-                          <div className="pt-2 border-t border-slate-200/60 space-y-2">
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                              Group Submission Progress
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                              {asgn.groupBreakdown.map((gb) => (
-                                <div
-                                  key={gb.groupId}
-                                  className="p-3 rounded-xl bg-white border border-slate-200 space-y-1.5"
-                                >
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="font-extrabold text-slate-800 truncate">{gb.groupName}</span>
-                                    <span className="font-bold text-indigo-600">{gb.completionRate}%</span>
-                                  </div>
-                                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-indigo-600 rounded-full"
-                                      style={{ width: `${gb.completionRate}%` }}
-                                    />
-                                  </div>
-                                  <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
-                                    <span>Submissions: {gb.submissionCount}</span>
-                                    <span>Members: {gb.memberCount}</span>
-                                  </div>
-                                </div>
+                          <div className="relative">
+                            <select
+                              value={selectedAsgn ? String(selectedAsgn.id) : ''}
+                              onChange={(e) => {
+                                setSelectedAnalyticsAsgnId(e.target.value);
+                                setStudentAnalyticsSearch('');
+                              }}
+                              className="w-full bg-slate-50 border-2 border-indigo-100 hover:border-indigo-300 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl px-4 py-3.5 text-xs sm:text-sm font-bold text-slate-800 transition-all cursor-pointer appearance-none shadow-sm pr-10"
+                            >
+                              {asgns.map((a) => (
+                                <option key={a.id} value={String(a.id)}>
+                                  {a.courseName ? `[${a.courseName}] ` : ''}{a.title} — ({a.totalSubmitted} / {a.totalTargetStudents} Submitted · {a.overallProjectRate}% Done)
+                                </option>
                               ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-indigo-600">
+                              <ChevronDown className="w-5 h-5" />
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-xs text-slate-400">
-                      No coursework projects published yet. Create an assignment to view group performance analytics.
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Overall Group Performance Summary */}
-              <div className="classic-card p-4 sm:p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
-                <div className="flex items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 min-w-0">
-                    <TrendingUp className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span className="truncate">Overall Group Performance</span>
-                  </h3>
-                  <span className="text-xs text-slate-500 font-semibold shrink-0">
-                    {analytics.groupPerformance?.length || 0} Groups
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {analytics.groupPerformance && analytics.groupPerformance.length > 0 ? (
-                    analytics.groupPerformance.map((group) => (
-                      <div
-                        key={group.id}
-                        className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-semibold text-slate-900">{group.name}</h4>
-                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                            {group.completionRate}% Done
-                          </span>
-                        </div>
-
-                        <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-indigo-600 rounded-full transition-all"
-                            style={{ width: `${Math.min(group.completionRate, 100)}%` }}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold pt-1">
-                          <span>Members: {group.memberCount}</span>
-                          <span>Submissions: {group.submissionCount}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-xs text-slate-400 col-span-2">
-                      No study group metrics logged yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Recent Student Submissions Table */}
-              <div className="classic-card p-6 bg-white rounded-xl border border-slate-200 shadow-md space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" /> Student Submission Confirmations
-                  </h3>
-                </div>
-
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
-                  {analytics.recentSubmissions && analytics.recentSubmissions.length > 0 ? (
-                    analytics.recentSubmissions.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                              <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                              Student Name: {sub.student_name || 'Unnamed Student'}
-                            </span>
-                            {sub.student_email && sub.student_email !== sub.student_name && (
-                              <span className="text-xs text-slate-500 font-medium">
-                                ({sub.student_email})
+                    {/* DETAILED ANALYTICS FOR SELECTED PROJECT */}
+                    {selectedAsgn && (
+                      <div className="classic-card p-5 sm:p-6 bg-white rounded-2xl border border-slate-200 shadow-md space-y-6 animate-fade-up">
+                        {/* Selected Assignment Header & Resources */}
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                {selectedAsgn.courseName}
                               </span>
-                            )}
-                            {sub.roll_number && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                Roll / ID #{sub.roll_number}
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                                {selectedAsgn.assignedToType === 'groups' ? 'Assigned to Specific Groups' : 'Assigned to All Students'}
                               </span>
-                            )}
-                            {sub.group_name && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                Group: {sub.group_name}
-                              </span>
+                              {selectedAsgn.dueDate && (
+                                <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200 flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5 text-slate-500" /> Due:{' '}
+                                  {new Date(selectedAsgn.dueDate).toLocaleDateString([], {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                              {selectedAsgn.title}
+                            </h3>
+                            {selectedAsgn.description && (
+                              <p className="text-xs text-slate-600 max-w-2xl">{selectedAsgn.description}</p>
                             )}
                           </div>
 
-                          {sub.assignment_title && (
-                            <p className="text-xs font-semibold text-slate-700">
-                              Assignment: "{sub.assignment_title}"
-                            </p>
-                          )}
-
-                          {sub.submitted_at && (
-                            <p className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              Submitted on: {new Date(sub.submitted_at).toLocaleString([], {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          )}
-
-                          {sub.submission_notes && (
-                            <p className="text-[11px] text-slate-500 italic">
-                              Notes: {sub.submission_notes}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                            {selectedAsgn.onedriveLink && (
+                              <a
+                                href={selectedAsgn.onedriveLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-all shadow-sm"
+                              >
+                                <span>☁ OneDrive Material</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                            {selectedAsgn.questionPaperUrl && (
+                              <a
+                                href={selectedAsgn.questionPaperUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={selectedAsgn.questionPaperName || 'question_paper.pdf'}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition-all shadow-sm"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>{selectedAsgn.questionPaperName || 'Question Paper'}</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                          {sub.submission_link && (
-                            <a
-                              href={sub.submission_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1"
-                            >
-                              Submission Link <ExternalLink className="w-3 h-3" />
-                            </a>
+                        {/* 3 Metric Cards for this Assignment */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold block">
+                              Target Students
+                            </span>
+                            <span className="text-2xl font-bold text-slate-900 block">
+                              {selectedAsgn.totalTargetStudents || 0}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">Expected Submissions</span>
+                          </div>
+
+                          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
+                            <span className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold block">
+                              Submitted Students
+                            </span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-2xl font-bold text-emerald-950">
+                                {selectedAsgn.totalSubmitted || 0}
+                              </span>
+                              <span className="text-xs font-extrabold text-emerald-700">
+                                ({selectedAsgn.overallProjectRate}%)
+                              </span>
+                            </div>
+                            <span className="text-xs text-emerald-800 font-medium">Completed & Confirmed</span>
+                          </div>
+
+                          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-1">
+                            <span className="text-[10px] text-rose-700 uppercase tracking-wider font-bold block">
+                              Pending / Not Submitted
+                            </span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-2xl font-bold text-rose-950">
+                                {selectedAsgn.totalNotSubmitted || 0}
+                              </span>
+                              <span className="text-xs font-extrabold text-rose-700">
+                                ({100 - (selectedAsgn.overallProjectRate || 0)}%)
+                              </span>
+                            </div>
+                            <span className="text-xs text-rose-800 font-medium">Awaiting Submission</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                            <span>Total Project Completion</span>
+                            <span className="text-indigo-600">{selectedAsgn.overallProjectRate}%</span>
+                          </div>
+                          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                            <div
+                              className="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full transition-all"
+                              style={{ width: `${selectedAsgn.overallProjectRate}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* SUB-TABS: Submitted vs Not Submitted vs Group Progress */}
+                        <div className="border-t border-slate-100 pt-5 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+                              <button
+                                type="button"
+                                onClick={() => setAnalyticsSubTab('submitted')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                                  analyticsSubTab === 'submitted'
+                                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                              >
+                                <UserCheck className="w-4 h-4" />
+                                <span>Submitted Students</span>
+                                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                  analyticsSubTab === 'submitted' ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-800'
+                                }`}>
+                                  {submittedList.length}
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setAnalyticsSubTab('not_submitted')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                                  analyticsSubTab === 'not_submitted'
+                                    ? 'bg-rose-600 text-white shadow-md shadow-rose-200'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                              >
+                                <UserX className="w-4 h-4" />
+                                <span>Not Submitted / Pending</span>
+                                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                  analyticsSubTab === 'not_submitted' ? 'bg-rose-700 text-white' : 'bg-slate-200 text-slate-800'
+                                }`}>
+                                  {notSubmittedList.length}
+                                </span>
+                              </button>
+
+                              {groupBreakdown.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setAnalyticsSubTab('groups')}
+                                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+                                    analyticsSubTab === 'groups'
+                                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  <Users className="w-4 h-4" />
+                                  <span>Group Progress</span>
+                                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                    analyticsSubTab === 'groups' ? 'bg-indigo-700 text-white' : 'bg-slate-200 text-slate-800'
+                                  }`}>
+                                    {groupBreakdown.length} Groups
+                                  </span>
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Search Filter for Student list */}
+                            {analyticsSubTab !== 'groups' && (
+                              <div className="relative w-full sm:w-64">
+                                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                                <input
+                                  type="text"
+                                  value={studentAnalyticsSearch}
+                                  onChange={(e) => setStudentAnalyticsSearch(e.target.value)}
+                                  className="classic-input pl-9 text-xs py-2 w-full"
+                                  placeholder="Filter students by name, roll..."
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* SUB-TAB 1: SUBMITTED STUDENTS LIST */}
+                          {analyticsSubTab === 'submitted' && (
+                            <div className="space-y-3">
+                              {filteredSubmitted.length === 0 ? (
+                                <div className="p-8 text-center rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 font-semibold space-y-1">
+                                  <CheckCircle className="w-8 h-8 text-slate-300 mx-auto" />
+                                  <p>No submitted students found matching the criteria.</p>
+                                </div>
+                              ) : (
+                                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                                  {filteredSubmitted.map((sub) => (
+                                    <div
+                                      key={sub.id || sub.submissionId || sub.studentId}
+                                      className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <div className="space-y-1.5 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                            {(sub.studentName || 'S').charAt(0).toUpperCase()}
+                                          </div>
+                                          <span className="font-extrabold text-sm text-slate-900">
+                                            {sub.studentName}
+                                          </span>
+                                          {sub.studentEmail && (
+                                            <span className="text-xs text-slate-500 font-medium">
+                                              ({sub.studentEmail})
+                                            </span>
+                                          )}
+                                          {sub.rollNumber && (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                              Roll #{sub.rollNumber}
+                                            </span>
+                                          )}
+                                          {sub.groupName ? (
+                                            <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1">
+                                              <Users className="w-3 h-3 text-purple-600" />
+                                              Group: {sub.groupName}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">
+                                              Individual Submission
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                                          {sub.submittedAt && (
+                                            <span className="flex items-center gap-1 font-medium">
+                                              <Clock className="w-3 h-3 text-slate-400" /> Submitted on:{' '}
+                                              {new Date(sub.submittedAt).toLocaleString([], {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                              })}
+                                            </span>
+                                          )}
+                                          {sub.phone && <span>Phone: {sub.phone}</span>}
+                                        </div>
+
+                                        {sub.submissionNotes && (
+                                          <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-xl border border-slate-100 italic">
+                                            "{sub.submissionNotes}"
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                                        {sub.submissionLink && (
+                                          <a
+                                            href={sub.submissionLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all flex items-center gap-1"
+                                          >
+                                            <span>Open Submission Link</span>
+                                            <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setGradingSub({
+                                              ...sub,
+                                              assignment_title: selectedAsgn.title,
+                                              student_name: sub.studentName,
+                                              student_email: sub.studentEmail
+                                            });
+                                            setGradeValue(sub.grade || '');
+                                            setFeedbackValue(sub.feedback || '');
+                                            setGradeError(null);
+                                          }}
+                                          className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1"
+                                        >
+                                          <Award className="w-3.5 h-3.5 text-purple-600" />
+                                          {sub.grade ? `Grade: ${sub.grade}` : '+ Grade & Feedback'}
+                                        </button>
+
+                                        <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
+                                          ✓ Submitted
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setGradingSub(sub);
-                              setGradeValue(sub.grade || '');
-                              setFeedbackValue(sub.feedback || '');
-                              setGradeError(null);
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition-all flex items-center gap-1 shrink-0"
-                          >
-                            <Award className="w-3.5 h-3.5 text-purple-600" />
-                            {sub.grade ? `Grade: ${sub.grade}` : 'Grade / Feedback'}
-                          </button>
-                          <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-bold">
-                            Confirmed
-                          </span>
+
+                          {/* SUB-TAB 2: NOT SUBMITTED STUDENTS LIST */}
+                          {analyticsSubTab === 'not_submitted' && (() => {
+                            const isAssignmentOverdue = selectedAsgn?.dueDate ? (new Date(selectedAsgn.dueDate).getTime() < Date.now()) : false;
+
+                            return (
+                              <div className="space-y-4">
+                                {isAssignmentOverdue && filteredNotSubmitted.length > 0 && (
+                                  <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-fade-up">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-md shadow-rose-200">
+                                        <AlertTriangle className="w-5 h-5" />
+                                      </div>
+                                      <div>
+                                        <h4 className="text-sm font-extrabold text-rose-950">Assignment Deadline Expired</h4>
+                                        <p className="text-xs font-semibold text-rose-700 mt-0.5">
+                                          Deadline was {new Date(selectedAsgn.dueDate).toLocaleString([], {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}. All {filteredNotSubmitted.length} students listed below have not submitted after the deadline.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <span className="badge bg-rose-600 text-white border-0 text-xs font-extrabold px-3.5 py-1.5 rounded-xl self-start sm:self-auto shadow-sm">
+                                      {filteredNotSubmitted.length} Overdue Students
+                                    </span>
+                                  </div>
+                                )}
+
+                                {filteredNotSubmitted.length === 0 ? (
+                                  <div className="p-8 text-center rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-bold space-y-1">
+                                    <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto" />
+                                    <p>🎉 All target students have submitted this assignment!</p>
+                                  </div>
+                                ) : (
+                                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                                    {filteredNotSubmitted.map((st) => {
+                                      const isStudentOverdue = st.isOverdue || isAssignmentOverdue;
+                                      return (
+                                        <div
+                                          key={st.studentId}
+                                          className={`p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 transition-colors ${
+                                            isStudentOverdue ? 'bg-rose-50/20 hover:bg-rose-50/40' : 'hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          <div className="space-y-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                                isStudentOverdue ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                                              }`}>
+                                                {(st.studentName || 'S').charAt(0).toUpperCase()}
+                                              </div>
+                                              <span className="font-extrabold text-sm text-slate-900">
+                                                {st.studentName}
+                                              </span>
+                                              {st.studentEmail && (
+                                                <span className="text-xs text-slate-500 font-medium">
+                                                  ({st.studentEmail})
+                                                </span>
+                                              )}
+                                              {st.rollNumber && (
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                                  Roll #{st.rollNumber}
+                                                </span>
+                                              )}
+                                              {st.groupName ? (
+                                                <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1">
+                                                  <Users className="w-3 h-3 text-purple-600" />
+                                                  Group: {st.groupName}
+                                                </span>
+                                              ) : (
+                                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200">
+                                                  Individual Assignment
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                                              {st.phone && <span>Phone: {st.phone}</span>}
+                                              {st.school && <span>· School: {st.school}</span>}
+                                            </div>
+                                          </div>
+
+                                          <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
+                                            {isStudentOverdue ? (
+                                              <span className="badge bg-rose-100 text-rose-900 border border-rose-300 text-xs font-extrabold px-3 py-1 flex items-center gap-1.5">
+                                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                                Overdue (Missed Deadline)
+                                              </span>
+                                            ) : (
+                                              <span className="badge bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold px-3 py-1 flex items-center gap-1.5">
+                                                <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                                                Pending Submission
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* SUB-TAB 3: GROUP PROGRESS BREAKDOWN */}
+                          {analyticsSubTab === 'groups' && (() => {
+                            const isAssignmentOverdue = selectedAsgn?.dueDate ? (new Date(selectedAsgn.dueDate).getTime() < Date.now()) : false;
+
+                            return (
+                              <div className="space-y-4">
+                                {groupBreakdown.length === 0 ? (
+                                  <div className="p-8 text-center rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                                    This assignment was not targeted to specific study groups.
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-5">
+                                    {groupBreakdown.map((gb) => {
+                                      const members = gb.members || [];
+                                      const submittedMembers = members.filter((m) => m.submitted);
+                                      const pendingMembers = members.filter((m) => !m.submitted);
+
+                                      return (
+                                        <div
+                                          key={gb.groupId}
+                                          className="p-5 sm:p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4 shadow-sm"
+                                        >
+                                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+                                            <div className="space-y-1">
+                                              <div className="flex items-center gap-2 flex-wrap">
+                                                <h4 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                                                  <Users className="w-5 h-5 text-indigo-600" />
+                                                  {gb.groupName}
+                                                </h4>
+                                                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                                                  {gb.memberCount} {gb.memberCount === 1 ? 'Student' : 'Students'}
+                                                </span>
+                                              </div>
+                                              <p className="text-xs text-slate-500">
+                                                {gb.submissionCount} submitted · {pendingMembers.length} pending
+                                              </p>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                                              <span className="badge bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-extrabold px-3 py-1">
+                                                {gb.completionRate}% Completed
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* Group Progress Bar */}
+                                          <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full transition-all"
+                                              style={{ width: `${gb.completionRate}%` }}
+                                            />
+                                          </div>
+
+                                          <div className="space-y-4 pt-1">
+                                            {/* 1. SUBMITTED STUDENTS IN THIS GROUP */}
+                                            <div className="space-y-2">
+                                              <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                                                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                                Submitted Students in {gb.groupName} ({submittedMembers.length})
+                                              </span>
+
+                                              {submittedMembers.length === 0 ? (
+                                                <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs text-slate-400 italic">
+                                                  No members in this group have submitted yet.
+                                                </div>
+                                              ) : (
+                                                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                                                  {submittedMembers.map((m) => (
+                                                    <div
+                                                      key={m.userId}
+                                                      className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                                                    >
+                                                      <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                                          {(m.name || m.email || 'S').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div className="min-w-0 space-y-0.5">
+                                                          <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-bold text-xs sm:text-sm text-slate-900">
+                                                              {m.name || m.email}
+                                                            </span>
+                                                            {m.role === 'creator' && (
+                                                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                                                Leader / Creator
+                                                              </span>
+                                                            )}
+                                                            {m.rollNumber && (
+                                                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                                                Roll #{m.rollNumber}
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                          <p className="text-xs text-slate-500 truncate">{m.email}</p>
+                                                        </div>
+                                                      </div>
+
+                                                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                                                        {m.submittedAt && (
+                                                          <span className="text-[11px] text-slate-500 hidden md:inline">
+                                                            {new Date(m.submittedAt).toLocaleDateString([], {
+                                                              month: 'short',
+                                                              day: 'numeric'
+                                                            })}
+                                                          </span>
+                                                        )}
+                                                        {m.submissionLink && (
+                                                          <a
+                                                            href={m.submissionLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all flex items-center gap-1"
+                                                          >
+                                                            <span>Link</span>
+                                                            <ExternalLink className="w-3 h-3" />
+                                                          </a>
+                                                        )}
+                                                        <span className="badge bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center gap-1">
+                                                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                                          Submitted
+                                                        </span>
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {/* 2. PENDING / NOT SUBMITTED STUDENTS IN THIS GROUP */}
+                                            <div className="space-y-2">
+                                              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                                <Clock className="w-4 h-4 text-amber-600" />
+                                                Pending / Not Submitted in {gb.groupName} ({pendingMembers.length})
+                                              </span>
+
+                                              {pendingMembers.length === 0 ? (
+                                                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-bold flex items-center gap-2">
+                                                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                                                  🎉 All {members.length} members in this group have submitted!
+                                                </div>
+                                              ) : (
+                                                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                                                  {pendingMembers.map((m) => (
+                                                    <div
+                                                      key={m.userId}
+                                                      className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                                                    >
+                                                      <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                                          {(m.name || m.email || 'S').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div className="min-w-0 space-y-0.5">
+                                                          <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-bold text-xs sm:text-sm text-slate-900">
+                                                              {m.name || m.email}
+                                                            </span>
+                                                            {m.role === 'creator' && (
+                                                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                                                Leader / Creator
+                                                              </span>
+                                                            )}
+                                                            {m.rollNumber && (
+                                                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                                                Roll #{m.rollNumber}
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                          <p className="text-xs text-slate-500 truncate">{m.email}</p>
+                                                        </div>
+                                                      </div>
+
+                                                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                                                        {isAssignmentOverdue ? (
+                                                          <span className="badge bg-rose-100 text-rose-900 border border-rose-300 text-xs font-extrabold flex items-center gap-1">
+                                                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                                            Overdue (Missed Deadline)
+                                                          </span>
+                                                        ) : (
+                                                          <span className="badge bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold flex items-center gap-1">
+                                                            <Clock className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                                                            Pending Submission
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-6 text-center text-xs text-slate-400">
-                      No student submission confirmations recorded yet.
-                    </div>
-                  )}
-                </div>
-              </div>
+                    )}
+                  </div>
+                );
+              })()}
             </>
           ) : null}
         </div>
@@ -962,10 +1806,20 @@ export default function AdminDashboard({ token }) {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                <BookOpen className="w-5 h-5 text-emerald-600 shrink-0" />
-                <span>{editingAsgn ? 'Edit assignment' : 'New assignment'}</span>
-              </h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  title="Go Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                  <BookOpen className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>{editingAsgn ? 'Edit assignment' : 'New assignment'}</span>
+                </h3>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
@@ -982,17 +1836,61 @@ export default function AdminDashboard({ token }) {
 
             <form onSubmit={handleSaveAssignment} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Course / Subject Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={courseName}
-                  onChange={(e) => setCourseName(e.target.value)}
-                  placeholder="e.g. Physics 101, Data Structures, Linear Algebra"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Course / Subject <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomCourse(!isCustomCourse)}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+                  >
+                    {isCustomCourse ? '← Select existing course' : '+ Enter custom course'}
+                  </button>
+                </div>
+
+                {!isCustomCourse ? (
+                  <select
+                    value={courseName}
+                    onChange={(e) => {
+                      if (e.target.value === '__custom__') {
+                        setIsCustomCourse(true);
+                        setCourseName('');
+                      } else {
+                        setCourseName(e.target.value);
+                      }
+                    }}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id || c.course_name} value={c.course_name}>
+                        {c.course_code ? `[${c.course_code}] ` : ''}{c.course_name}
+                      </option>
+                    ))}
+                    {courses.length === 0 && (
+                      <option value="General Coursework">General Coursework</option>
+                    )}
+                    <option value="__custom__">➕ Add new custom course...</option>
+                  </select>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      required
+                      value={courseName}
+                      onChange={(e) => setCourseName(e.target.value)}
+                      placeholder="e.g. Advanced Physics 201"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={customCourseCode}
+                      onChange={(e) => setCustomCourseCode(e.target.value)}
+                      placeholder="Course Code (Optional, e.g. PHY-201)"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -1175,9 +2073,9 @@ export default function AdminDashboard({ token }) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 min-h-11"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 min-h-11 flex items-center justify-center gap-1.5"
                 >
-                  Cancel
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
                 </button>
                 <button
                   type="submit"
@@ -1206,10 +2104,20 @@ export default function AdminDashboard({ token }) {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                <Award className="w-5 h-5 text-purple-600 shrink-0" />
-                <span>Grade Submission for {gradingSub.student_name}</span>
-              </h3>
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setGradingSub(null)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  title="Go Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                  <Award className="w-5 h-5 text-purple-600 shrink-0" />
+                  <span>Grade Submission for {gradingSub.student_name}</span>
+                </h3>
+              </div>
               <button
                 onClick={() => setGradingSub(null)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
@@ -1256,9 +2164,9 @@ export default function AdminDashboard({ token }) {
                 <button
                   type="button"
                   onClick={() => setGradingSub(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 min-h-11"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 min-h-11 flex items-center justify-center gap-1.5"
                 >
-                  Cancel
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
                 </button>
                 <button
                   type="submit"
@@ -1267,6 +2175,110 @@ export default function AdminDashboard({ token }) {
                 >
                   <Award className="w-3.5 h-3.5" />
                   {gradingLoading ? 'Saving Grade...' : 'Save Grade & Notify Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit Course Modal */}
+      {isCourseModalOpen && (
+        <div
+          className="modal-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsCourseModalOpen(false);
+          }}
+        >
+          <div
+            className="modal-sheet bg-white border border-slate-200 shadow-2xl p-5 sm:p-6 space-y-5 text-left"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCourseModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  title="Go Back"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                  <FolderPlus className="w-5 h-5 text-indigo-600 shrink-0" />
+                  <span>{editingCourse ? 'Edit Course' : 'Create New Course'}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsCourseModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {courseModalError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                {courseModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCourse} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Course / Subject Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={courseFormName}
+                  onChange={(e) => setCourseFormName(e.target.value)}
+                  placeholder="e.g. Organic Chemistry II, Data Structures, Macroeconomics"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Course Code <span className="text-slate-400 font-normal">(e.g. CHEM-202, CS-105)</span>
+                </label>
+                <input
+                  type="text"
+                  value={courseFormCode}
+                  onChange={(e) => setCourseFormCode(e.target.value)}
+                  placeholder="e.g. PHY-101 (Leave empty to auto-generate)"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Course Overview & Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={courseFormDesc}
+                  onChange={(e) => setCourseFormDesc(e.target.value)}
+                  placeholder="Provide syllabus highlights, prerequisites, or course overview..."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                />
+              </div>
+
+              <div className="pt-3 action-stack border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCourseModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 min-h-11 flex items-center justify-center gap-1.5"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCourse || !courseFormName.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11"
+                >
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  {savingCourse ? 'Saving Course...' : editingCourse ? 'Update Course' : 'Create Course'}
                 </button>
               </div>
             </form>

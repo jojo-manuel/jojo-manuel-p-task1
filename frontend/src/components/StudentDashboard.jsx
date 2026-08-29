@@ -12,7 +12,8 @@ import {
   UserCheck,
   ChevronRight,
   Clock,
-  Award
+  Award,
+  ArrowLeft
 } from 'lucide-react';
 import StudentGroupManager from './StudentGroupManager';
 import NotificationCenter from './NotificationCenter';
@@ -26,7 +27,8 @@ export default function StudentDashboard({
   onRefreshNotifications,
   isNotificationsOpen,
   onCloseNotifications,
-  onEditDetails
+  onEditDetails,
+  navHomeTrigger
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [assignments, setAssignments] = useState([]);
@@ -36,6 +38,14 @@ export default function StudentDashboard({
   const firstName = (user.name || 'Student').split(' ')[0];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  // React to top Navbar Joineazy click -> navigate back to overview / home
+  useEffect(() => {
+    if (navHomeTrigger) {
+      setActiveTab('overview');
+      setSelectedCourseFilter('');
+    }
+  }, [navHomeTrigger]);
 
   useEffect(() => {
     if (token) {
@@ -161,6 +171,29 @@ export default function StudentDashboard({
         </button>
       </nav>
 
+      {/* Back to Overview Banner when in sub-tabs */}
+      {activeTab !== 'overview' && (
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('overview');
+              setSelectedCourseFilter('');
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-sm group"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Overview & Courses</span>
+          </button>
+
+          {selectedCourseFilter && activeTab === 'assignments' && (
+            <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">
+              Filtered: <strong>{selectedCourseFilter}</strong>
+            </span>
+          )}
+        </div>
+      )}
+
       {isNotificationsOpen && (
         <NotificationCenter
           notifications={notifications}
@@ -204,60 +237,118 @@ export default function StudentDashboard({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {enrolledCourses.map((course) => (
-                  <div
-                    key={course.name}
-                    onClick={() => handleOpenCourse(course.name)}
-                    className="classic-card-interactive rounded-2xl p-5 border border-slate-200 bg-white shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all flex flex-col justify-between cursor-pointer group"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                          <BookOpen className="w-5 h-5" />
+                {enrolledCourses.map((course) => {
+                  const isFullLength = enrolledCourses.length === 1 || course.name === 'General Coursework';
+                  return (
+                    <div
+                      key={course.name}
+                      onClick={() => handleOpenCourse(course.name)}
+                      className={`classic-card-interactive rounded-2xl p-5 sm:p-6 border border-slate-200 bg-white shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all cursor-pointer group ${
+                        isFullLength ? 'col-span-full' : 'flex flex-col justify-between'
+                      }`}
+                    >
+                      {isFullLength ? (
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                          <div className="flex items-start sm:items-center gap-4 min-w-0 flex-1">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-105 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm border border-indigo-100">
+                              <BookOpen className="w-6 h-6 sm:w-7 sm:h-7" />
+                            </div>
+                            <div className="space-y-1.5 min-w-0 flex-1">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                  {course.name}
+                                </h3>
+                                <span className="text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                  {course.teacher}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500">
+                                {course.totalAssignments} {course.totalAssignments === 1 ? 'Assignment' : 'Assignments'} Total
+                              </p>
+                              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 pt-0.5 flex-wrap">
+                                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold">
+                                  ✓ {course.completedAssignments} Done
+                                </span>
+                                {course.pendingAssignments > 0 && (
+                                  <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/80 text-[11px] font-bold">
+                                    ⏳ {course.pendingAssignments} Pending
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-stretch sm:items-center md:items-end lg:items-center gap-4 shrink-0 md:min-w-[280px]">
+                            <div className="space-y-1.5 flex-1 w-full sm:w-48">
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span className="text-slate-500">Completion</span>
+                                <span className="text-indigo-600 font-semibold">{course.completionRate}%</span>
+                              </div>
+                              <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full transition-all"
+                                  style={{ width: `${course.completionRate}%` }}
+                                />
+                              </div>
+                            </div>
+                            <div className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white font-bold text-xs transition-all shadow-sm shrink-0">
+                              Open Coursework <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                          {course.teacher}
-                        </span>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm shrink-0 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                <BookOpen className="w-5 h-5" />
+                              </div>
+                              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                {course.teacher}
+                              </span>
+                            </div>
 
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                          {course.name}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {course.totalAssignments} {course.totalAssignments === 1 ? 'Assignment' : 'Assignments'} Total
-                        </p>
-                      </div>
+                            <div>
+                              <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                                {course.name}
+                              </h3>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {course.totalAssignments} {course.totalAssignments === 1 ? 'Assignment' : 'Assignments'} Total
+                              </p>
+                            </div>
 
-                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 pt-1 flex-wrap">
-                        <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold">
-                          ✓ {course.completedAssignments} Done
-                        </span>
-                        {course.pendingAssignments > 0 && (
-                          <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/80 text-[11px] font-bold">
-                            ⏳ {course.pendingAssignments} Pending
-                          </span>
-                        )}
-                      </div>
+                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 pt-1 flex-wrap">
+                              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[11px] font-bold">
+                                ✓ {course.completedAssignments} Done
+                              </span>
+                              {course.pendingAssignments > 0 && (
+                                <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/80 text-[11px] font-bold">
+                                  ⏳ {course.pendingAssignments} Pending
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-5 pt-3.5 border-t border-slate-100 space-y-2">
+                            <div className="flex items-center justify-between text-xs font-bold">
+                              <span className="text-slate-500">Completion Progress</span>
+                              <span className="text-indigo-600">{course.completionRate}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full transition-all"
+                                style={{ width: `${course.completionRate}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-end gap-1 text-xs font-bold text-indigo-600 group-hover:translate-x-1 transition-transform pt-1">
+                              Open Coursework <ChevronRight className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-
-                    <div className="mt-5 pt-3.5 border-t border-slate-100 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-500">Completion Progress</span>
-                        <span className="text-indigo-600">{course.completionRate}%</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-indigo-600 to-emerald-500 rounded-full transition-all"
-                          style={{ width: `${course.completionRate}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-end gap-1 text-xs font-bold text-indigo-600 group-hover:translate-x-1 transition-transform pt-1">
-                        Open Coursework <ChevronRight className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </section>

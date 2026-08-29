@@ -122,11 +122,18 @@ export function PopoverSelect({ value, onChange, options, placeholder = 'Select'
   );
 }
 
-export function DateTimeField({ value, onChange, className }) {
+export function DateTimeField({ value, onChange, className, minDate, allowPast = false }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
   const datePart = value?.slice(0, 10) || '';
   const timePart = value?.slice(11, 16) || '';
+
+  // Get current local date & time
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const minAllowedDate = allowPast ? undefined : (minDate || todayStr);
 
   const label = value
     ? `${datePart} ${timePart}`.trim()
@@ -137,7 +144,18 @@ export function DateTimeField({ value, onChange, className }) {
       onChange('');
       return;
     }
-    onChange(`${nextDate || datePart || new Date().toISOString().slice(0, 10)}T${nextTime || timePart || '23:59'}`);
+
+    let chosenDate = nextDate || datePart || todayStr;
+    if (!allowPast && chosenDate < todayStr) {
+      chosenDate = todayStr;
+    }
+
+    let chosenTime = nextTime || timePart || '23:59';
+    if (!allowPast && chosenDate === todayStr && chosenTime < currentTimeStr) {
+      chosenTime = currentTimeStr;
+    }
+
+    onChange(`${chosenDate}T${chosenTime}`);
   };
 
   return (
@@ -163,8 +181,16 @@ export function DateTimeField({ value, onChange, className }) {
           <input
             type="date"
             value={datePart}
-            onChange={(event) => commit(event.target.value, timePart)}
-            className="mt-1 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800"
+            min={minAllowedDate}
+            onChange={(event) => {
+              const val = event.target.value;
+              if (!allowPast && val && val < todayStr) {
+                commit(todayStr, timePart);
+              } else {
+                commit(val, timePart);
+              }
+            }}
+            className="mt-1 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </label>
         <label className="block px-2 pt-1 pb-3 text-[11px] font-semibold text-slate-500">
@@ -172,8 +198,9 @@ export function DateTimeField({ value, onChange, className }) {
           <input
             type="time"
             value={timePart}
+            min={(!allowPast && datePart === todayStr) ? currentTimeStr : undefined}
             onChange={(event) => commit(datePart, event.target.value)}
-            className="mt-1 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800"
+            className="mt-1 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
           />
         </label>
       </AnchoredPanel>

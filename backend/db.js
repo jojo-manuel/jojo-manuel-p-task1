@@ -22,6 +22,32 @@ let fallbackGroupMembers = [];
 let fallbackNotifications = [];
 let fallbackAssignments = [];
 let fallbackSubmissions = [];
+let fallbackCourses = [
+  {
+    id: 1,
+    course_code: 'PHY-101',
+    course_name: 'Physics 101',
+    description: 'Fundamental mechanics, thermodynamics, and laboratory experiments.',
+    created_at: '2026-08-20T10:00:00.000Z',
+    updated_at: '2026-08-20T10:00:00.000Z'
+  },
+  {
+    id: 2,
+    course_code: 'MATH-201',
+    course_name: 'Calculus & Linear Algebra',
+    description: 'Multivariable calculus, vector spaces, and matrix transformations.',
+    created_at: '2026-08-21T10:00:00.000Z',
+    updated_at: '2026-08-21T10:00:00.000Z'
+  },
+  {
+    id: 3,
+    course_code: 'CS-101',
+    course_name: 'General Coursework',
+    description: 'Standard academic coursework, assignments, and group projects.',
+    created_at: '2026-08-22T10:00:00.000Z',
+    updated_at: '2026-08-22T10:00:00.000Z'
+  }
+];
 
 let nextUserId = 1;
 let nextGroupId = 1;
@@ -29,6 +55,7 @@ let nextMemberId = 1;
 let nextNotificationId = 1;
 let nextAssignmentId = 1;
 let nextSubmissionId = 1;
+let nextCourseId = 4;
 
 function loadFallbackData() {
   try {
@@ -50,6 +77,8 @@ function loadFallbackData() {
       fallbackAssignments = parsed.assignments || [];
       fallbackSubmissions = parsed.submissions || [];
 
+      fallbackCourses = (parsed.courses && parsed.courses.length > 0) ? parsed.courses : fallbackCourses;
+
       const getNextId = (list, explicitNext) => {
         if (explicitNext && typeof explicitNext === 'number' && !isNaN(explicitNext)) {
           return explicitNext;
@@ -67,6 +96,7 @@ function loadFallbackData() {
       nextNotificationId = getNextId(fallbackNotifications, parsed.nextNotificationId);
       nextAssignmentId = getNextId(fallbackAssignments, parsed.nextAssignmentId);
       nextSubmissionId = getNextId(fallbackSubmissions, parsed.nextSubmissionId);
+      nextCourseId = getNextId(fallbackCourses, parsed.nextCourseId);
     }
   } catch (err) {
     console.error('Error loading fallback data:', err.message);
@@ -82,12 +112,14 @@ function saveFallbackData() {
       notifications: fallbackNotifications,
       assignments: fallbackAssignments,
       submissions: fallbackSubmissions,
+      courses: fallbackCourses,
       nextUserId,
       nextGroupId,
       nextMemberId,
       nextNotificationId,
       nextAssignmentId,
-      nextSubmissionId
+      nextSubmissionId,
+      nextCourseId
     };
     fs.writeFileSync(fallbackDataPath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
@@ -557,6 +589,19 @@ async function query(text, params = []) {
     return { rows: [], rowCount: 0 };
   }
 
+  // DELETE FROM group_members
+  if (normalized.match(/^DELETE FROM group_members/i)) {
+    const groupId = params[0];
+    const userId = params[1];
+    const initialLen = fallbackGroupMembers.length;
+    fallbackGroupMembers = fallbackGroupMembers.filter(
+      (m) => !(fallbackIdsMatch(m.group_id, groupId) && (userId === undefined || fallbackIdsMatch(m.user_id, userId)))
+    );
+    const deletedCount = initialLen - fallbackGroupMembers.length;
+    saveFallbackData();
+    return { rows: [], rowCount: deletedCount };
+  }
+
   // --- NOTIFICATIONS FALLBACK QUERIES ---
 
   // INSERT INTO notifications
@@ -855,6 +900,80 @@ async function query(text, params = []) {
       };
     });
     return { rows: subs, rowCount: subs.length };
+  }
+
+  // --- COURSES FALLBACK QUERIES ---
+
+  // INSERT INTO courses
+  if (normalized.match(/^INSERT INTO courses/i)) {
+    const course_code = params[0] || `CS-${Math.floor(100 + Math.random() * 900)}`;
+    const course_name = params[1] || 'General Coursework';
+    const description = params[2] || '';
+    const professor_id = params[3] ? parseInt(params[3], 10) : null;
+
+    const newCourse = {
+      id: nextCourseId++,
+      course_code,
+      course_name,
+      description,
+      professor_id,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    fallbackCourses.push(newCourse);
+    saveFallbackData();
+    return { rows: [newCourse], rowCount: 1 };
+  }
+
+  // SELECT DISTINCT course_name FROM assignments
+  if (normalized.match(/SELECT\s+DISTINCT\s+course_name\s+FROM\s+assignments/i)) {
+    const names = Array.from(new Set(fallbackAssignments.map(a => a.course_name || 'General Coursework')));
+    const rows = names.map(c => ({ course_name: c }));
+    return { rows, rowCount: rows.length };
+  }
+
+  // SELECT course by ID
+  if (normalized.match(/^SELECT \* FROM courses WHERE id = \$1/i)) {
+    const id = params[0];
+    const course = fallbackCourses.find(c => fallbackIdsMatch(c.id, id));
+    return { rows: course ? [course] : [], rowCount: course ? 1 : 0 };
+  }
+
+  // SELECT all courses
+  if (normalized.match(/^SELECT \* FROM courses/i)) {
+    const sorted = [...fallbackCourses].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return { rows: sorted, rowCount: sorted.length };
+  }
+
+  // UPDATE courses
+  if (normalized.match(/^UPDATE courses SET/i)) {
+    const course_code = params[0];
+    const course_name = params[1];
+    const description = params[2];
+    const id = params[3];
+
+    const course = fallbackCourses.find(c => fallbackIdsMatch(c.id, id));
+    if (course) {
+      if (course_code !== undefined) course.course_code = course_code;
+      if (course_name !== undefined) course.course_name = course_name;
+      if (description !== undefined) course.description = description;
+      course.updated_at = new Date().toISOString();
+      saveFallbackData();
+      return { rows: [course], rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
+  }
+
+  // DELETE FROM courses
+  if (normalized.match(/^DELETE FROM courses WHERE id = \$1/i)) {
+    const id = params[0];
+    const index = fallbackCourses.findIndex(c => fallbackIdsMatch(c.id, id));
+    if (index !== -1) {
+      const removed = fallbackCourses.splice(index, 1);
+      saveFallbackData();
+      return { rows: removed, rowCount: 1 };
+    }
+    return { rows: [], rowCount: 0 };
   }
 
   return { rows: [], rowCount: 0 };

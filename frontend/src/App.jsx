@@ -6,6 +6,7 @@ import OnboardingForm from './components/OnboardingForm';
 import TeacherOnboardingForm from './components/TeacherOnboardingForm';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import { useToast } from './components/Toast';
 import './App.css';
 
 async function safeParseJson(res) {
@@ -24,6 +25,7 @@ async function safeParseJson(res) {
 }
 
 function App() {
+  const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('joineazy_token') || null);
   const [loading, setLoading] = useState(false);
@@ -32,11 +34,19 @@ function App() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [pendingGoogle, setPendingGoogle] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [navHomeTrigger, setNavHomeTrigger] = useState(0);
 
   // Notification State
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const handleGoHome = () => {
+    setIsEditingProfile(false);
+    setIsNotificationsOpen(false);
+    setPendingGoogle(null);
+    setNavHomeTrigger((prev) => prev + 1);
+  };
 
   // Restore user session on mount
   useEffect(() => {
@@ -110,8 +120,10 @@ function App() {
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
       setSuccessMessage('Registration successful! Please fill in your student details.');
+      toast.success('Registration successful! Welcome to Joineazy.');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -136,8 +148,10 @@ function App() {
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
       setSuccessMessage('Logged in successfully!');
+      toast.success(`Welcome back, ${data.user?.name || data.user?.email || 'User'}!`);
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -164,6 +178,7 @@ function App() {
           email: data.profile?.email,
           name: data.profile?.name
         });
+        toast.info('Please select your portal role to finish setup.');
         return;
       }
 
@@ -172,8 +187,10 @@ function App() {
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
       setSuccessMessage(data.message || 'Signed in with Google!');
+      toast.success('Signed in with Google successfully!');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Google sign in failed');
     } finally {
       setLoading(false);
     }
@@ -199,8 +216,10 @@ function App() {
       setUser(data.user);
       setIsEditingProfile(false);
       setSuccessMessage('Faculty details saved! Welcome to Teacher Portal.');
+      toast.success('Faculty profile details saved successfully!');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Failed to save faculty profile');
     } finally {
       setLoading(false);
     }
@@ -226,8 +245,10 @@ function App() {
       setUser(data.user);
       setIsEditingProfile(false);
       setSuccessMessage('Profile updated! Redirecting to student page...');
+      toast.success('Student profile updated successfully!');
     } catch (err) {
       setError(err.message);
+      toast.error(err.message || 'Failed to update student details');
     } finally {
       setLoading(false);
     }
@@ -244,6 +265,7 @@ function App() {
     setNotifications([]);
     setUnreadCount(0);
     setIsNotificationsOpen(false);
+    toast.info('You have been logged out.');
   };
 
   const renderCurrentView = () => {
@@ -295,13 +317,14 @@ function App() {
           <TeacherOnboardingForm
             user={user}
             onSubmitDetails={handleSaveTeacherDetails}
+            onBack={isTeacherComplete ? () => setIsEditingProfile(false) : handleLogout}
             loading={loading}
             error={error}
           />
         );
       }
 
-      return <AdminDashboard token={token} />;
+      return <AdminDashboard token={token} navHomeTrigger={navHomeTrigger} />;
     }
 
     // Student View: Check if onboarding details are complete
@@ -314,6 +337,7 @@ function App() {
         <OnboardingForm
           user={user}
           onSubmitDetails={handleSaveStudentDetails}
+          onBack={isProfileComplete ? () => setIsEditingProfile(false) : handleLogout}
           loading={loading}
           error={error}
         />
@@ -331,6 +355,7 @@ function App() {
         isNotificationsOpen={isNotificationsOpen}
         onCloseNotifications={() => setIsNotificationsOpen(false)}
         onEditDetails={() => setIsEditingProfile(true)}
+        navHomeTrigger={navHomeTrigger}
       />
     );
   };
@@ -340,6 +365,7 @@ function App() {
       <Navbar
         user={user}
         onLogout={handleLogout}
+        onGoHome={handleGoHome}
         unreadNotificationsCount={unreadCount}
         onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
         isNotificationsOpen={isNotificationsOpen}

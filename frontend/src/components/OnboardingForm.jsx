@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Hash, User, Phone, ArrowRight } from 'lucide-react';
+import { Hash, User, Phone, ArrowRight, ArrowLeft } from 'lucide-react';
 
-export default function OnboardingForm({ user, onSubmitDetails, loading, error }) {
+export default function OnboardingForm({ user, onSubmitDetails, onBack, loading, error }) {
   const parts = (user?.name || '').trim().split(/\s+/).filter(Boolean);
   const [firstName, setFirstName] = useState(parts[0] || '');
   const [lastName, setLastName] = useState(parts.slice(1).join(' ') || '');
@@ -21,6 +21,16 @@ export default function OnboardingForm({ user, onSubmitDetails, loading, error }
   return (
     <div className="w-full max-w-xl mx-auto my-4 sm:my-8 animate-fade-up text-slate-800">
       <div className="classic-card p-5 sm:p-8 bg-white">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all group mb-4"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+          </button>
+        )}
         <div className="mb-6">
           <p className="text-sm text-slate-500 mb-1">Student registration</p>
           <h2 className="text-xl font-semibold text-slate-900">Complete your details</h2>

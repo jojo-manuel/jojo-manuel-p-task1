@@ -16,11 +16,15 @@ import {
   Users,
   AlertTriangle,
   UserCheck,
-  Zap
+  Zap,
+  ChevronDown,
+  ArrowLeft
 } from 'lucide-react';
 import { PopoverSelect } from './AnchoredPopover';
+import { useToast } from './Toast';
 
 export default function StudentAssignmentsView({ token, initialCourseFilter = '' }) {
+  const { toast } = useToast();
   const [assignments, setAssignments] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -161,6 +165,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
     e.preventDefault();
     if (!hasConfirmedUpload) {
       setSubmitError('Please check “Yes, I have submitted” before continuing.');
+      toast.warning('Please confirm upload on OneDrive before continuing.');
       return;
     }
     setSubmitError(null);
@@ -191,7 +196,9 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
         throw new Error(data.message || 'Failed to confirm submission');
       }
 
+      const asgnTitle = selectedAsgn.title || 'Coursework';
       setSubmitSuccess(data.message || 'Submission confirmation recorded!');
+      toast.success(`Submission recorded for "${asgnTitle}"! Faculty notified.`);
       setTimeout(() => {
         setSelectedAsgn(null);
         setSubmitSuccess(null);
@@ -201,6 +208,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       await fetchAssignments();
     } catch (err) {
       setSubmitError(err.message);
+      toast.error(err.message || 'Failed to submit assignment');
       setSubmitStep(1);
     } finally {
       setSubmitting(false);
@@ -266,52 +274,51 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
         </div>
       </div>
 
-      {/* Course Filter Selector Bar */}
+      {/* Course Filter Dropdown Bar */}
       {availableCourses.length > 0 && (
-        <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-            <span className="flex items-center gap-1.5 text-indigo-700">
-              <BookOpen className="w-4 h-4" /> Filter by Enrolled Course:
-            </span>
-            {selectedCourse && selectedCourse !== 'ALL' && (
-              <button
-                type="button"
-                onClick={() => setSelectedCourse('ALL')}
-                className="text-xs text-slate-500 hover:text-slate-800 underline font-semibold"
-              >
-                Clear filter (Show All)
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setSelectedCourse('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                !selectedCourse || selectedCourse === 'ALL'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              All Courses ({assignments.length})
-            </button>
-            {availableCourses.map((cName) => {
-              const count = assignments.filter((a) => (a.course_name || 'General Coursework') === cName).length;
-              return (
-                <button
-                  key={cName}
-                  type="button"
-                  onClick={() => setSelectedCourse(cName)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                    selectedCourse === cName
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label htmlFor="course-filter-select" className="flex items-center gap-2 text-xs font-bold text-slate-800 shrink-0">
+              <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-100">
+                <BookOpen className="w-4 h-4" />
+              </span>
+              <span>Filter by Enrolled Course:</span>
+            </label>
+
+            <div className="flex items-center gap-2 flex-1 sm:max-w-md w-full justify-end">
+              <div className="relative w-full">
+                <select
+                  id="course-filter-select"
+                  value={selectedCourse || 'ALL'}
+                  onChange={(e) => setSelectedCourse(e.target.value)}
+                  className="w-full pl-3.5 pr-9 py-2 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-bold text-slate-800 appearance-none cursor-pointer transition-all shadow-sm"
                 >
-                  {cName} ({count})
+                  <option value="ALL">All Courses ({assignments.length})</option>
+                  {availableCourses.map((cName) => {
+                    const count = assignments.filter((a) => (a.course_name || 'General Coursework') === cName).length;
+                    return (
+                      <option key={cName} value={cName}>
+                        {cName} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+
+              {selectedCourse && selectedCourse !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCourse('ALL')}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold shrink-0 transition-colors border border-slate-200"
+                  title="Show all courses"
+                >
+                  Show All
                 </button>
-              );
-            })}
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -427,7 +434,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
           {displayedAssignments.map((asgn) => {
             const isDone = asgn.isSubmitted;
             const isExpired = !isDone && asgn.due_date && new Date(asgn.due_date).getTime() < now;
@@ -437,12 +444,12 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
             return (
               <div
                 key={asgn.id}
-                className={`classic-card rounded-2xl sm:rounded-xl p-4 sm:p-6 bg-white border shadow-md space-y-4 flex flex-col justify-between transition-all min-w-0 ${
+                className={`classic-card rounded-2xl p-4 sm:p-5 bg-white border shadow-md space-y-3.5 flex flex-col justify-between transition-all hover:shadow-lg min-w-0 ${
                   isExpired
-                    ? 'border-rose-300 bg-rose-50/20'
+                    ? 'border-rose-300 bg-rose-50/20 hover:border-rose-400'
                     : isDone
-                    ? 'border-emerald-300 bg-emerald-50/20'
-                    : 'border-slate-200 hover:border-indigo-300'
+                    ? 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-400'
+                    : 'border-slate-200 hover:border-indigo-300 hover:bg-white'
                 }`}
               >
                 <div className="space-y-3">
@@ -570,23 +577,28 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
                       {primaryProgress.members && primaryProgress.members.length > 0 && (
                         <div className="pt-2 border-t border-slate-200/80 space-y-1">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                            Member Submission Status:
+                            Group Members Submission Status:
                           </span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                          <div className="flex flex-col gap-1.5 text-[11px]">
                             {primaryProgress.members.map((m) => (
                               <div
                                 key={m.userId}
-                                className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white border border-slate-200/80"
+                                className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-200/80"
                               >
-                                <span className="text-slate-800 font-semibold truncate min-w-0">
-                                  {m.name || m.email}
-                                </span>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-5 h-5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                    {(m.name || m.email || 'S').charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="text-slate-800 font-bold truncate">
+                                    {m.name || m.email}
+                                  </span>
+                                </div>
                                 {m.submitted ? (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded shrink-0">
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
                                     ✓ Submitted
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
+                                  <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full shrink-0">
                                     Pending
                                   </span>
                                 )}
@@ -716,12 +728,22 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
               onMouseDown={(event) => event.stopPropagation()}
             >
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
-              <div className="min-w-0">
-                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <CheckSquare className="w-6 h-6 text-indigo-600 shrink-0" />
-                  <span>Confirm Assignment Submission</span>
-                </h3>
-                <p className="text-sm text-slate-500 mt-1 truncate">"{selectedAsgn.title}"</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAsgn(null)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                  title="Go Back"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="min-w-0">
+                  <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <CheckSquare className="w-6 h-6 text-indigo-600 shrink-0" />
+                    <span>Confirm Assignment Submission</span>
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1 truncate">"{selectedAsgn.title}"</p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedAsgn(null)}
@@ -760,6 +782,20 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
               </span>
             </div>
 
+            {selectedAsgn.assigned_to_type === 'groups' && (
+              <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 text-purple-950 text-xs font-semibold flex items-start gap-2.5 shadow-sm">
+                <span className="text-base shrink-0">👑</span>
+                <div>
+                  <strong className="block text-purple-900 font-extrabold">
+                    Group Leader Submission Authority ({selectedAsgn.groupName || 'Study Group'})
+                  </strong>
+                  <span>
+                    As Group Leader, confirming this submission will automatically mark the project as completed for all members in your group and notify your professor.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {submitStep === 1 ? (
               <div className="space-y-5">
                 <p className="text-sm text-slate-600 font-medium">
@@ -789,11 +825,18 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
                   </span>
                 </label>
 
-                <div className="pt-1">
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAsgn(null)}
+                    className="btn-secondary w-1/3 py-3 text-sm justify-center min-h-11 flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Cancel
+                  </button>
                   <button
                     type="button"
                     onClick={handleProceedToStep2}
-                    className="btn-primary w-full py-3 text-sm justify-center min-h-11"
+                    className="btn-primary w-2/3 py-3 text-sm justify-center min-h-11"
                   >
                     Continue to Step 2 →
                   </button>
