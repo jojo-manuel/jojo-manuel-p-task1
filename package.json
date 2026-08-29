@@ -6,8 +6,8 @@
   "private": true,
   "scripts": {
     "start": "node backend/server.js",
-    "build": "npm install && npm --prefix frontend install --include=dev && npm --prefix frontend run build",
-    "vercel-build": "npm install && npm --prefix frontend install --include=dev && npm --prefix frontend run build"
+    "build": "cd frontend && npm install && npm run build",
+    "vercel-build": "cd frontend && npm install && npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
