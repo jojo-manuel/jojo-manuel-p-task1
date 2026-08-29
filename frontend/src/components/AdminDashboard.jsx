@@ -541,36 +541,53 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
   return (
     <div className="w-full space-y-5 animate-fade-up text-left">
-      <section className="mb-1">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 text-white p-6 sm:p-8 shadow-xl shadow-slate-900/10">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-10 w-60 h-60 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900">
-              {activeTab === 'assignments' && 'Assignments & Coursework'}
-              {activeTab === 'courses' && 'Courses & Curriculum'}
-              {activeTab === 'analytics' && 'Analytics & Performance'}
-              {activeTab === 'directory' && 'Student Directory'}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-300">Faculty workspace</p>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white mt-1">
+              {activeTab === 'assignments' && 'Assignments & coursework'}
+              {activeTab === 'courses' && 'Courses & curriculum'}
+              {activeTab === 'analytics' && 'Analytics & performance'}
+              {activeTab === 'directory' && 'Student directory'}
             </h1>
-            <p className="text-sm text-slate-500 mt-1 max-w-xl">
-              {activeTab === 'assignments' && 'Post coursework, assign tasks to classes or groups, and track student submissions.'}
-              {activeTab === 'courses' && 'Create and manage your course subjects, syllabus items, and class enrollments.'}
-              {activeTab === 'analytics' && 'Review group completion rates, submission trends, and grade student submissions.'}
-              {activeTab === 'directory' && 'Browse enrolled students, review roll numbers, and view contact details.'}
+            <p className="text-sm text-indigo-100/80 mt-1.5 max-w-xl">
+              {activeTab === 'assignments' && 'Post work, assign it to the class or a group, and track confirmations.'}
+              {activeTab === 'courses' && 'Create subjects and keep syllabus items organized.'}
+              {activeTab === 'analytics' && 'Review completion, trends, and grade submissions.'}
+              {activeTab === 'directory' && 'Browse enrolled students and contact details.'}
             </p>
           </div>
-          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex gap-2">
+              <div className="hero-stat text-center">
+                <p className="text-lg font-extrabold leading-none">{assignments.length}</p>
+                <p className="text-[10px] uppercase tracking-wide text-indigo-200 mt-1">Tasks</p>
+              </div>
+              <div className="hero-stat text-center">
+                <p className="text-lg font-extrabold leading-none">{courses.length}</p>
+                <p className="text-[10px] uppercase tracking-wide text-indigo-200 mt-1">Courses</p>
+              </div>
+              <div className="hero-stat text-center">
+                <p className="text-lg font-extrabold leading-none">{students.length}</p>
+                <p className="text-[10px] uppercase tracking-wide text-indigo-200 mt-1">Students</p>
+              </div>
+            </div>
             <button
               type="button"
               onClick={handleOpenCreateCourseModal}
-              className="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-all flex items-center justify-center gap-1.5 min-h-10 shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs border border-white/20 transition-all flex items-center justify-center gap-1.5 min-h-10"
             >
-              <FolderPlus className="w-4 h-4" /> Add Course
+              <FolderPlus className="w-4 h-4" /> Add course
             </button>
             <button
               type="button"
               onClick={() => handleOpenCreateModal()}
-              className="btn-primary w-full sm:w-auto min-h-10"
+              className="btn-primary min-h-10 shadow-none"
             >
-              <PlusCircle className="w-4 h-4" /> New Assignment
+              <PlusCircle className="w-4 h-4" /> New assignment
             </button>
           </div>
         </div>
@@ -637,10 +654,12 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
               {asgnError}
             </div>
           ) : assignments.length === 0 ? (
-            <div className="text-center py-12 classic-card rounded-xl bg-white border border-slate-200 space-y-3">
-              <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <BookOpen className="w-6 h-6" />
+              </div>
               <h3 className="text-base font-bold text-slate-800">No assignments yet</h3>
-              <p className="text-sm text-slate-500 max-w-sm mx-auto">
+              <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1">
                 Assignments you post appear here. Other faculty members’ work stays in their own workspace.
               </p>
             </div>
@@ -2139,6 +2158,19 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                     placeholder="e.g. A+ or 92/100"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
                   />
+                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets:</span>
+                    {['A+ (95/100)', 'A (88/100)', 'B+ (78/100)', 'Pass (100/100)'].map((preset) => (
+                      <button
+                        type="button"
+                        key={preset}
+                        onClick={() => setGradeValue(preset)}
+                        className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[11px] font-bold transition-all cursor-pointer"
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>

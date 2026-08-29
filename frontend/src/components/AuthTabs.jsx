@@ -19,9 +19,10 @@ export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, load
   };
 
   return (
-    <div className="w-full max-w-[420px] mx-auto animate-fade-up">
+    <div className="w-full max-w-[440px] mx-auto animate-fade-up">
       <div className="text-center mb-6">
-        <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">
+        <p className="section-kicker mb-2 lg:hidden">Joineazy</p>
+        <h1 className="text-[1.75rem] font-extrabold tracking-tight text-slate-900">
           {activeTab === 'login' ? 'Sign in' : 'Create account'}
         </h1>
         <p className="text-sm text-slate-500 mt-1.5">
@@ -33,7 +34,7 @@ export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, load
         </p>
       </div>
 
-      <div className="classic-card p-5 sm:p-7">
+      <div className="classic-card p-5 sm:p-8 shadow-lg shadow-slate-200/60">
         <div className="portal-tabs mb-5">
           <button
             type="button"
@@ -84,7 +85,7 @@ export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, load
                   onClick={() => setRegisterRole('student')}
                   className={`py-2.5 px-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-1.5 ${
                     registerRole === 'student'
-                      ? 'bg-slate-900 border-slate-900 text-white'
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -95,7 +96,7 @@ export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, load
                   onClick={() => setRegisterRole('admin')}
                   className={`py-2.5 px-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-1.5 ${
                     registerRole === 'admin'
-                      ? 'bg-slate-900 border-slate-900 text-white'
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm'
                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >

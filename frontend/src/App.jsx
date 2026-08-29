@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
+import AuthLayout from './components/AuthLayout';
 import AuthTabs from './components/AuthTabs';
 import GoogleRolePicker from './components/GoogleRolePicker';
 import OnboardingForm from './components/OnboardingForm';
@@ -277,28 +278,32 @@ function App() {
     if (!user) {
       if (pendingGoogle) {
         return (
-          <GoogleRolePicker
-            profile={pendingGoogle}
-            onSelectRole={(role) => handleGoogleCredential(pendingGoogle.idToken, role)}
-            onBack={() => {
-              setPendingGoogle(null);
-              setError(null);
-            }}
-            loading={loading}
-            error={error}
-          />
+          <AuthLayout>
+            <GoogleRolePicker
+              profile={pendingGoogle}
+              onSelectRole={(role) => handleGoogleCredential(pendingGoogle.idToken, role)}
+              onBack={() => {
+                setPendingGoogle(null);
+                setError(null);
+              }}
+              loading={loading}
+              error={error}
+            />
+          </AuthLayout>
         );
       }
 
       return (
-        <AuthTabs
-          onRegister={handleRegister}
-          onLogin={handleLogin}
-          onGoogleCredential={(idToken) => handleGoogleCredential(idToken)}
-          loading={loading}
-          error={error}
-          successMessage={successMessage}
-        />
+        <AuthLayout>
+          <AuthTabs
+            onRegister={handleRegister}
+            onLogin={handleLogin}
+            onGoogleCredential={(idToken) => handleGoogleCredential(idToken)}
+            loading={loading}
+            error={error}
+            successMessage={successMessage}
+          />
+        </AuthLayout>
       );
     }
 
@@ -367,12 +372,12 @@ function App() {
         isNotificationsOpen={isNotificationsOpen}
       />
 
-      <main className={`flex-1 w-full max-w-6xl mx-auto min-w-0 ${user ? 'app-main-app' : 'app-main-auth'}`}>
+      <main className={`flex-1 w-full max-w-7xl mx-auto min-w-0 ${user ? 'app-main-app' : 'app-main-auth'}`}>
         {renderCurrentView()}
       </main>
 
       <footer className="app-footer">
-        <p>Joineazy</p>
+        <p>Joineazy · coursework, groups, and faculty tools in one portal</p>
       </footer>
     </div>
   );

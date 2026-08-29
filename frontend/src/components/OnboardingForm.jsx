@@ -33,7 +33,7 @@ export default function OnboardingForm({ user, onSubmitDetails, onBack, loading,
         )}
         <div className="mb-6">
           <p className="text-sm text-slate-500 mb-1">Student registration</p>
-          <h2 className="text-xl font-semibold text-slate-900">Complete your details</h2>
+          <h2 className="text-xl font-extrabold text-slate-900">Complete your details</h2>
           <p className="text-sm text-slate-500 mt-1">
             {user?.email
               ? `Signed in as ${user.email}. Add your roll number and phone to finish registration.`

@@ -11,11 +11,16 @@
 .app-footer {
   width: 100%;
   margin-top: auto;
-  padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom));
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
   text-align: center;
   font-size: 0.75rem;
   color: #94a3b8;
   border-top: 1px solid #eceef2;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.app-footer p {
+  max-width: 72rem;
+  margin: 0 auto;
 }

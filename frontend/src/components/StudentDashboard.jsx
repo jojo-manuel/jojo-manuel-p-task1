@@ -90,6 +90,9 @@ export default function StudentDashboard({
     completionRate: c.totalAssignments > 0 ? Math.round((c.completedAssignments / c.totalAssignments) * 100) : 0
   }));
 
+  const completedCount = assignments.filter((a) => a.isSubmitted).length;
+  const pendingCount = assignments.filter((a) => !a.isSubmitted).length;
+
   const handleOpenCourse = (courseName) => {
     setSelectedCourseFilter(courseName);
     setActiveTab('assignments');
@@ -125,7 +128,21 @@ export default function StudentDashboard({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <div className="flex gap-2">
+              <div className="hero-stat text-center">
+                <p className="text-lg font-extrabold leading-none">{enrolledCourses.length}</p>
+                <p className="text-[10px] uppercase tracking-wide text-indigo-200 mt-1">Courses</p>
+              </div>
+              <div className="hero-stat text-center">
+                <p className="text-lg font-extrabold leading-none">{pendingCount}</p>
+                <p className="text-[10px] uppercase tracking-wide text-indigo-200 mt-1">Pending</p>
+              </div>
+              <div className="hero-stat text-center">
+                <p className="text-lg font-extrabold leading-none">{completedCount}</p>
+                <p className="text-[10px] uppercase tracking-wide text-indigo-200 mt-1">Done</p>
+              </div>
+            </div>
             <button
               type="button"
               onClick={onEditDetails}
@@ -226,11 +243,13 @@ export default function StudentDashboard({
             {loadingAssignments ? (
               <SkeletonCourses count={3} />
             ) : enrolledCourses.length === 0 ? (
-              <div className="p-8 text-center classic-card rounded-2xl bg-white border border-slate-200 space-y-2">
-                <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
-                <h3 className="text-sm font-bold text-slate-800">No Enrolled Courses Found</h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  When a professor posts coursework for your class, the respective course card will automatically appear here.
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">No courses yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                  When faculty post coursework for your class, those courses will appear here.
                 </p>
               </div>
             ) : (

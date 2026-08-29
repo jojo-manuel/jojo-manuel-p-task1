@@ -18,7 +18,8 @@ import {
   UserCheck,
   Zap,
   ChevronDown,
-  ArrowLeft
+  ArrowLeft,
+  Search
 } from 'lucide-react';
 import { PopoverSelect } from './AnchoredPopover';
 import { useToast } from './Toast';
@@ -32,6 +33,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
   const [error, setError] = useState(null);
   const [filterTab, setFilterTab] = useState('active'); // 'active' | 'completed' | 'missed'
   const [selectedCourse, setSelectedCourse] = useState(initialCourseFilter || '');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [selectedAsgn, setSelectedAsgn] = useState(null);
   const [submitStep, setSubmitStep] = useState(1);
@@ -249,9 +251,21 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       ? missedAssignments
       : activeAssignments;
 
-  const displayedAssignments = selectedCourse && selectedCourse !== 'ALL'
+  const courseFiltered = selectedCourse && selectedCourse !== 'ALL'
     ? baseAssignments.filter((a) => (a.course_name || 'General Coursework') === selectedCourse)
     : baseAssignments;
+
+  const displayedAssignments = searchTerm.trim()
+    ? courseFiltered.filter((a) => {
+        const query = searchTerm.toLowerCase().trim();
+        return (
+          (a.title && a.title.toLowerCase().includes(query)) ||
+          (a.course_name && a.course_name.toLowerCase().includes(query)) ||
+          (a.teacher_name && a.teacher_name.toLowerCase().includes(query)) ||
+          (a.description && a.description.toLowerCase().includes(query))
+        );
+      })
+    : courseFiltered;
 
   return (
     <div className="w-full space-y-6 text-left animate-fade-up">
@@ -263,8 +277,8 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
               View official question papers, submit on OneDrive, and track deadlines.
             </p>
           </div>
-          <p className="text-sm text-slate-500">
-            {completedCount} of {totalCount} confirmed
+          <p className="text-sm text-slate-500 font-semibold">
+            {completedCount} of {totalCount} confirmed ({progressPercent}%)
           </p>
         </div>
         <div className="h-1.5 w-full progress-track">
@@ -275,24 +289,39 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
         </div>
       </div>
 
-      {/* Course Filter Dropdown Bar */}
-      {availableCourses.length > 0 && (
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <label htmlFor="course-filter-select" className="flex items-center gap-2 text-xs font-bold text-slate-800 shrink-0">
-              <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-100">
-                <BookOpen className="w-4 h-4" />
-              </span>
-              <span>Filter by Enrolled Course:</span>
-            </label>
+      {/* Quick Search & Course Filter Bar */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Live Search Input */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search coursework, topic, or instructor..."
+              className="w-full pl-10 pr-9 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-medium text-slate-800 transition-all"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
-            <div className="flex items-center gap-2 flex-1 sm:max-w-md w-full justify-end">
-              <div className="relative w-full">
+          {/* Enrolled Course Dropdown */}
+          {availableCourses.length > 0 && (
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="relative min-w-[200px]">
                 <select
                   id="course-filter-select"
                   value={selectedCourse || 'ALL'}
                   onChange={(e) => setSelectedCourse(e.target.value)}
-                  className="w-full pl-3.5 pr-9 py-2 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-bold text-slate-800 appearance-none cursor-pointer transition-all shadow-sm"
+                  className="w-full pl-3.5 pr-9 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-bold text-slate-800 appearance-none cursor-pointer transition-all shadow-sm"
                 >
                   <option value="ALL">All Courses ({assignments.length})</option>
                   {availableCourses.map((cName) => {
@@ -313,16 +342,16 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
                 <button
                   type="button"
                   onClick={() => setSelectedCourse('ALL')}
-                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold shrink-0 transition-colors border border-slate-200"
+                  className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold shrink-0 transition-colors border border-slate-200"
                   title="Show all courses"
                 >
-                  Show All
+                  Clear
                 </button>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Due Today Alert Box */}
       {dueTodayAssignments.length > 0 && (

@@ -37,8 +37,8 @@ export default function TeacherOnboardingForm({ user, onSubmitDetails, onBack, l
           </button>
         )}
         <div className="space-y-1">
-          <p className="text-sm text-slate-500">Faculty registration</p>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
+          <p className="section-kicker">Faculty registration</p>
+          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
             Complete your profile
           </h2>
           <p className="text-sm text-slate-500">

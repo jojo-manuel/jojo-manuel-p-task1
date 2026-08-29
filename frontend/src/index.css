@@ -31,7 +31,7 @@
   }
 
   body {
-    font-family: Inter, 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
     background-color: var(--bg-primary);
     background-image:
       radial-gradient(1200px 600px at 10% -5%, rgba(79, 70, 229, 0.08), transparent 60%),
@@ -170,25 +170,25 @@
 
 /* Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
   color: #ffffff;
   font-weight: 600;
   padding: 0.68rem 1.25rem;
   border-radius: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 14px -4px rgba(79, 70, 229, 0.45);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 8px 20px -4px rgba(79, 70, 229, 0.5);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -738,6 +738,50 @@
   background: linear-gradient(90deg, #4f46e5, #10b981);
   border-radius: 999px;
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-brand-panel {
+  background:
+    radial-gradient(900px 420px at 80% -10%, rgba(99, 102, 241, 0.45), transparent 55%),
+    linear-gradient(165deg, #1e1b4b 0%, #312e81 42%, #0f172a 100%);
+  box-shadow: 0 24px 50px -20px rgba(49, 46, 129, 0.45);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2.75rem 1.5rem;
+  border-radius: 1.15rem;
+  background: #ffffff;
+  border: 1px dashed #dbe3ee;
+}
+
+.empty-state-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.85rem;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.hero-stat {
+  min-width: 5.5rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+}
+
+.section-kicker {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
 }
 
 @keyframes checkBounce {

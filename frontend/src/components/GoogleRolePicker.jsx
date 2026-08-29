@@ -3,9 +3,10 @@ import { GraduationCap, Briefcase, ArrowLeft, AlertTriangle } from 'lucide-react
 
 export default function GoogleRolePicker({ profile, onSelectRole, onBack, loading, error }) {
   return (
-    <div className="w-full max-w-[420px] mx-auto animate-fade-up">
+    <div className="w-full max-w-[440px] mx-auto animate-fade-up">
       <div className="text-center mb-6">
-        <h1 className="text-[1.65rem] font-semibold tracking-tight text-slate-900">
+        <p className="section-kicker mb-2">Almost there</p>
+        <h1 className="text-[1.75rem] font-extrabold tracking-tight text-slate-900">
           Choose your role
         </h1>
         <p className="text-sm text-slate-500 mt-1.5">
@@ -13,7 +14,7 @@ export default function GoogleRolePicker({ profile, onSelectRole, onBack, loadin
         </p>
       </div>
 
-      <div className="classic-card p-5 sm:p-7">
+      <div className="classic-card p-5 sm:p-8 shadow-lg shadow-slate-200/60">
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 text-sm flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -28,10 +29,10 @@ export default function GoogleRolePicker({ profile, onSelectRole, onBack, loadin
             type="button"
             disabled={loading}
             onClick={() => onSelectRole('student')}
-            className="py-3.5 px-4 rounded-xl border border-slate-200 bg-white text-left hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-60"
+            className="py-3.5 px-4 rounded-xl border border-slate-200 bg-white text-left hover:bg-indigo-50/70 hover:border-indigo-200 transition-colors disabled:opacity-60"
           >
             <div className="flex items-center gap-3">
-              <span className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center">
+              <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-slate-900 text-white flex items-center justify-center">
                 <GraduationCap className="w-5 h-5" />
               </span>
               <span>
@@ -47,10 +48,10 @@ export default function GoogleRolePicker({ profile, onSelectRole, onBack, loadin
             type="button"
             disabled={loading}
             onClick={() => onSelectRole('admin')}
-            className="py-3.5 px-4 rounded-xl border border-slate-200 bg-white text-left hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-60"
+            className="py-3.5 px-4 rounded-xl border border-slate-200 bg-white text-left hover:bg-indigo-50/70 hover:border-indigo-200 transition-colors disabled:opacity-60"
           >
             <div className="flex items-center gap-3">
-              <span className="w-10 h-10 rounded-lg bg-slate-900 text-white flex items-center justify-center">
+              <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-slate-900 text-white flex items-center justify-center">
                 <Briefcase className="w-5 h-5" />
               </span>
               <span>

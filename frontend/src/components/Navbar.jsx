@@ -13,7 +13,8 @@ export default function Navbar({
 
   return (
     <header className="sticky top-0 z-40 w-full glass-navbar pt-[env(safe-area-inset-top)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+      <div className="h-0.5 w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-emerald-400" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-[4.15rem] flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={onGoHome}
@@ -24,7 +25,7 @@ export default function Navbar({
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Joineazy</span>
+            <span className="text-base font-extrabold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Joineazy</span>
             {user && (
               <span className={`hidden xs:inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                 user.role === 'admin' 
@@ -62,7 +63,7 @@ export default function Navbar({
               )}
 
               <div className="hidden sm:flex items-center gap-2.5 min-w-0 pl-1">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
                   {(user.name || user.email || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div className="text-left leading-tight min-w-0">
