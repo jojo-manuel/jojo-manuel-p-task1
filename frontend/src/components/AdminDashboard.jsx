@@ -1944,6 +1944,29 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                     onChange={setDueDate}
                     placeholder="Pick due date and time"
                   />
+                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets:</span>
+                    {[
+                      { label: '+3 Days', days: 3 },
+                      { label: '+1 Week', days: 7 },
+                      { label: '+2 Weeks', days: 14 },
+                      { label: '+1 Month', days: 30 }
+                    ].map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.label}
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + preset.days);
+                          d.setHours(23, 59, 0, 0);
+                          setDueDate(d.toISOString());
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -2276,6 +2299,23 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                     placeholder="e.g. Organic Chemistry II, Data Structures, Macroeconomics"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
                   />
+                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions:</span>
+                    {['Computer Science', 'Data Structures', 'Organic Chemistry', 'Calculus', 'Physics', 'Macroeconomics'].map((subj) => (
+                      <button
+                        type="button"
+                        key={subj}
+                        onClick={() => {
+                          setCourseFormName(subj);
+                          const prefix = subj.split(' ').map(w => w[0]).join('').toUpperCase();
+                          setCourseFormCode(`${prefix}-101`);
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        {subj}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>

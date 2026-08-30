@@ -490,44 +490,44 @@
   margin: 0.6rem auto 0.85rem;
 }
 
-/* Floating Centered Modal Card */
+/* Floating Top-Aligned Modal Card */
 .floating-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(15, 23, 42, 0.62);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  padding: max(1.25rem, 3.5vh) 1rem 2.5rem 1rem;
   overflow-y: auto;
   animation: fadeIn 0.2s ease-out both;
 }
 
 .floating-modal-card {
   width: 100%;
-  max-width: 36rem;
-  max-height: min(90vh, 720px);
+  max-width: 38rem;
+  max-height: calc(100vh - max(2.5rem, 7vh));
   display: flex;
   flex-direction: column;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 1.5rem;
-  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.05);
-  animation: modalFloatIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.3), 0 0 0 1px rgba(15, 23, 42, 0.08);
+  animation: modalFloatInTop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
   overflow: hidden;
 }
 
-@keyframes modalFloatIn {
+@keyframes modalFloatInTop {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: translateY(-24px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
