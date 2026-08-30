@@ -36,6 +36,7 @@ function App() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [pendingGoogle, setPendingGoogle] = useState(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isJustRegistered, setIsJustRegistered] = useState(false);
   const [navHomeTrigger, setNavHomeTrigger] = useState(0);
 
   // Notification State
@@ -121,7 +122,9 @@ function App() {
       setToken(data.token);
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
-      setSuccessMessage('Registration successful! Please fill in your student details.');
+      setIsJustRegistered(true);
+      setIsEditingProfile(false);
+      setSuccessMessage('Registration successful! Please fill in your details.');
       toast.success('Registration successful! Welcome to Joineazy.');
     } catch (err) {
       setError(err.message);
@@ -149,6 +152,8 @@ function App() {
       setToken(data.token);
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
+      setIsJustRegistered(false);
+      setIsEditingProfile(false);
       setSuccessMessage('Logged in successfully!');
       toast.success(`Welcome back, ${data.user?.name || data.user?.email || 'User'}!`);
     } catch (err) {
@@ -188,6 +193,8 @@ function App() {
       setToken(data.token);
       localStorage.setItem('joineazy_token', data.token);
       setUser(data.user);
+      setIsJustRegistered(Boolean(role));
+      setIsEditingProfile(false);
       setSuccessMessage(data.message || 'Signed in with Google!');
       toast.success('Signed in with Google successfully!');
     } catch (err) {
@@ -217,6 +224,7 @@ function App() {
 
       setUser(data.user);
       setIsEditingProfile(false);
+      setIsJustRegistered(false);
       setSuccessMessage('Faculty details saved! Welcome to Teacher Portal.');
       toast.success('Faculty profile details saved successfully!');
     } catch (err) {
@@ -246,6 +254,7 @@ function App() {
 
       setUser(data.user);
       setIsEditingProfile(false);
+      setIsJustRegistered(false);
       setSuccessMessage('Profile updated! Redirecting to student page...');
       toast.success('Student profile updated successfully!');
     } catch (err) {
@@ -262,6 +271,7 @@ function App() {
     localStorage.removeItem('joineazy_token');
     setPendingGoogle(null);
     setIsEditingProfile(false);
+    setIsJustRegistered(false);
     setError(null);
     setSuccessMessage(null);
     setNotifications([]);
@@ -307,18 +317,21 @@ function App() {
       );
     }
 
-    // Teacher / Admin View
+    // Teacher / Admin View: Only prompt onboarding if explicitly editing OR on first-time registration
     if (user.role === 'admin') {
       const isTeacherComplete = Boolean(
         user.name && (user.employeeId || user.rollNumber) && user.phone
       );
 
-      if (!isTeacherComplete || isEditingProfile) {
+      if (isEditingProfile || (isJustRegistered && !isTeacherComplete)) {
         return (
           <TeacherOnboardingForm
             user={user}
             onSubmitDetails={handleSaveTeacherDetails}
-            onBack={isTeacherComplete ? () => setIsEditingProfile(false) : handleLogout}
+            onBack={() => {
+              setIsEditingProfile(false);
+              setIsJustRegistered(false);
+            }}
             loading={loading}
             error={error}
           />
@@ -328,17 +341,20 @@ function App() {
       return <AdminDashboard token={token} navHomeTrigger={navHomeTrigger} />;
     }
 
-    // Student View: Check if onboarding details are complete
+    // Student View: Only prompt onboarding if explicitly editing OR on first-time registration
     const isProfileComplete = Boolean(
       user.name && user.rollNumber && user.phone
     );
 
-    if (!isProfileComplete || isEditingProfile) {
+    if (isEditingProfile || (isJustRegistered && !isProfileComplete)) {
       return (
         <OnboardingForm
           user={user}
           onSubmitDetails={handleSaveStudentDetails}
-          onBack={isProfileComplete ? () => setIsEditingProfile(false) : handleLogout}
+          onBack={() => {
+            setIsEditingProfile(false);
+            setIsJustRegistered(false);
+          }}
           loading={loading}
           error={error}
         />
