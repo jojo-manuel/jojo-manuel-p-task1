@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Users,
   Search,
@@ -1805,577 +1806,583 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
         </div>
       )}
 
-      {/* Create / Edit Assignment Modal - Floating Card */}
-      {isModalOpen && (
-        <div
-          className="floating-modal-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setIsModalOpen(false);
-          }}
-        >
+      {/* Create / Edit Assignment Modal - Floating Top Card */}
+      {isModalOpen &&
+        createPortal(
           <div
-            className="floating-modal-card text-left"
-            onMouseDown={(event) => event.stopPropagation()}
+            className="floating-modal-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setIsModalOpen(false);
+            }}
           >
-            {/* Sticky Fixed Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="floating-modal-card text-left"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              {/* Sticky Fixed Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    title="Go Back"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                    <BookOpen className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>{editingAsgn ? 'Edit assignment' : 'New assignment'}</span>
+                  </h3>
+                </div>
                 <button
-                  type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                  title="Go Back"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                  <BookOpen className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <span>{editingAsgn ? 'Edit assignment' : 'New assignment'}</span>
-                </h3>
               </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Scrollable Form Body */}
-            <form onSubmit={handleSaveAssignment} className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-                {modalError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
-                    {modalError}
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">
-                      Course / Subject <span className="text-rose-500">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomCourse(!isCustomCourse)}
-                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline"
-                    >
-                      {isCustomCourse ? '← Select existing course' : '+ Enter custom course'}
-                    </button>
-                  </div>
-
-                  {!isCustomCourse ? (
-                    <select
-                      value={courseName}
-                      onChange={(e) => {
-                        if (e.target.value === '__custom__') {
-                          setIsCustomCourse(true);
-                          setCourseName('');
-                        } else {
-                          setCourseName(e.target.value);
-                        }
-                      }}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
-                    >
-                      {courses.map((c) => (
-                        <option key={c.id || c.course_name} value={c.course_name}>
-                          {c.course_code ? `[${c.course_code}] ` : ''}{c.course_name}
-                        </option>
-                      ))}
-                      {courses.length === 0 && (
-                        <option value="General Coursework">General Coursework</option>
-                      )}
-                      <option value="__custom__">➕ Add new custom course...</option>
-                    </select>
-                  ) : (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        required
-                        value={courseName}
-                        onChange={(e) => setCourseName(e.target.value)}
-                        placeholder="e.g. Advanced Physics 201"
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
-                      />
-                      <input
-                        type="text"
-                        value={customCourseCode}
-                        onChange={(e) => setCustomCourseCode(e.target.value)}
-                        placeholder="Course Code (Optional, e.g. PHY-201)"
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      />
+              {/* Scrollable Form Body */}
+              <form onSubmit={handleSaveAssignment} className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                  {modalError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                      {modalError}
                     </div>
                   )}
-                </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Assignment Title <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Calculus Midterm Lab Project"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Description & Instructions
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Provide instructions or homework guidelines..."
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Submission Due Date & Time
-                  </label>
-                  <DateTimeField
-                    value={dueDate}
-                    onChange={setDueDate}
-                    placeholder="Pick due date and time"
-                  />
-                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets:</span>
-                    {[
-                      { label: '+3 Days', days: 3 },
-                      { label: '+1 Week', days: 7 },
-                      { label: '+2 Weeks', days: 14 },
-                      { label: '+1 Month', days: 30 }
-                    ].map((preset) => (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Course / Subject <span className="text-rose-500">*</span>
+                      </label>
                       <button
                         type="button"
-                        key={preset.label}
-                        onClick={() => {
-                          const d = new Date();
-                          d.setDate(d.getDate() + preset.days);
-                          d.setHours(23, 59, 0, 0);
-                          setDueDate(d.toISOString());
-                        }}
-                        className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 text-[10px] font-bold transition-all cursor-pointer"
+                        onClick={() => setIsCustomCourse(!isCustomCourse)}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline"
                       >
-                        {preset.label}
+                        {isCustomCourse ? '← Select existing course' : '+ Enter custom course'}
                       </button>
-                    ))}
+                    </div>
+
+                    {!isCustomCourse ? (
+                      <select
+                        value={courseName}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setIsCustomCourse(true);
+                            setCourseName('');
+                          } else {
+                            setCourseName(e.target.value);
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+                      >
+                        {courses.map((c) => (
+                          <option key={c.id || c.course_name} value={c.course_name}>
+                            {c.course_code ? `[${c.course_code}] ` : ''}{c.course_name}
+                          </option>
+                        ))}
+                        {courses.length === 0 && (
+                          <option value="General Coursework">General Coursework</option>
+                        )}
+                        <option value="__custom__">➕ Add new custom course...</option>
+                      </select>
+                    ) : (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          required
+                          value={courseName}
+                          onChange={(e) => setCourseName(e.target.value)}
+                          placeholder="e.g. Advanced Physics 201"
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+                        />
+                        <input
+                          type="text"
+                          value={customCourseCode}
+                          onChange={(e) => setCustomCourseCode(e.target.value)}
+                          placeholder="Course Code (Optional, e.g. PHY-201)"
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Teacher's OneDrive Folder / Resource Link
-                  </label>
-                  <input
-                    type="url"
-                    value={onedriveLink}
-                    onChange={(e) => setOnedriveLink(e.target.value)}
-                    placeholder="https://1drv.ms/... (OneDrive sharing link)"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Question Paper (PDF Upload)
-                  </label>
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      id="pdf-upload-input"
-                      onChange={handlePdfUpload}
-                      disabled={pdfUploading}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="pdf-upload-input"
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer shadow-sm transition-all"
-                    >
-                      <Upload className="w-3.5 h-3.5 text-indigo-600" />
-                      {pdfUploading ? 'Uploading PDF...' : 'Choose Question Paper PDF'}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Assignment Title <span className="text-rose-500">*</span>
                     </label>
+                    <input
+                      type="text"
+                      required
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Calculus Midterm Lab Project"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-semibold"
+                    />
+                  </div>
 
-                    {questionPaperName && (
-                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
-                        <span className="truncate font-semibold">{questionPaperName}</span>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Description & Instructions
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Provide instructions or homework guidelines..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Submission Due Date & Time
+                    </label>
+                    <DateTimeField
+                      value={dueDate}
+                      onChange={setDueDate}
+                      placeholder="Pick due date and time"
+                    />
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets:</span>
+                      {[
+                        { label: '+3 Days', days: 3 },
+                        { label: '+1 Week', days: 7 },
+                        { label: '+2 Weeks', days: 14 },
+                        { label: '+1 Month', days: 30 }
+                      ].map((preset) => (
                         <button
                           type="button"
+                          key={preset.label}
                           onClick={() => {
-                            setQuestionPaperUrl('');
-                            setQuestionPaperName('');
+                            const d = new Date();
+                            d.setDate(d.getDate() + preset.days);
+                            d.setHours(23, 59, 0, 0);
+                            setDueDate(d.toISOString());
                           }}
-                          className="text-emerald-700 hover:text-emerald-900 font-bold text-xs"
+                          className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 text-[10px] font-bold transition-all cursor-pointer"
                         >
-                          ✕
+                          {preset.label}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Teacher's OneDrive Folder / Resource Link
+                    </label>
+                    <input
+                      type="url"
+                      value={onedriveLink}
+                      onChange={(e) => setOnedriveLink(e.target.value)}
+                      placeholder="https://1drv.ms/... (OneDrive sharing link)"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Question Paper (PDF Upload)
+                    </label>
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        id="pdf-upload-input"
+                        onChange={handlePdfUpload}
+                        disabled={pdfUploading}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="pdf-upload-input"
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer shadow-sm transition-all"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                        {pdfUploading ? 'Uploading PDF...' : 'Choose Question Paper PDF'}
+                      </label>
+
+                      {questionPaperName && (
+                        <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
+                          <span className="truncate font-semibold">{questionPaperName}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuestionPaperUrl('');
+                              setQuestionPaperName('');
+                            }}
+                            className="text-emerald-700 hover:text-emerald-900 font-bold text-xs"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Target Audience: All vs Groups */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Target Assignment Audience:
+                    </label>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer min-h-10">
+                        <input
+                          type="radio"
+                          name="assignedToType"
+                          value="all"
+                          checked={assignedToType === 'all'}
+                          onChange={() => setAssignedToType('all')}
+                          className="text-emerald-600 focus:ring-emerald-500"
+                        />
+                        All Enrolled Students
+                      </label>
+
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer min-h-10">
+                        <input
+                          type="radio"
+                          name="assignedToType"
+                          value="groups"
+                          checked={assignedToType === 'groups'}
+                          onChange={() => setAssignedToType('groups')}
+                          className="text-emerald-600 focus:ring-emerald-500"
+                        />
+                        Specific Study Groups
+                      </label>
+                    </div>
+
+                    {/* Specific Group Checkboxes */}
+                    {assignedToType === 'groups' && (
+                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
+                        <span className="text-[11px] font-bold text-slate-600 block">
+                          Select Target Study Groups:
+                        </span>
+                        {availableGroups.length > 0 ? (
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                            {availableGroups.map((g) => {
+                              const isChecked = selectedGroupIds.includes(g.id);
+                              return (
+                                <label
+                                  key={g.id}
+                                  className="flex items-center gap-2 text-xs text-slate-800 font-medium cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedGroupIds([...selectedGroupIds, g.id]);
+                                      } else {
+                                        setSelectedGroupIds(selectedGroupIds.filter((id) => id !== g.id));
+                                      }
+                                    }}
+                                    className="rounded text-emerald-600 focus:ring-emerald-500"
+                                  />
+                                  <span>{g.name} ({g.memberCount} Members)</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 italic">No study groups found</p>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Target Audience: All vs Groups */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Target Assignment Audience:
-                  </label>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer min-h-10">
-                      <input
-                        type="radio"
-                        name="assignedToType"
-                        value="all"
-                        checked={assignedToType === 'all'}
-                        onChange={() => setAssignedToType('all')}
-                        className="text-emerald-600 focus:ring-emerald-500"
-                      />
-                      All Enrolled Students
-                    </label>
+                {/* Floating Sticky Footer */}
+                <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingAsgn || !title.trim()}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
+                  >
+                    {savingAsgn ? (
+                      <>
+                        <ButtonSpinner className="w-3.5 h-3.5" />
+                        <span>Publishing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{editingAsgn ? 'Update Assignment' : 'Publish Assignment'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
 
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer min-h-10">
-                      <input
-                        type="radio"
-                        name="assignedToType"
-                        value="groups"
-                        checked={assignedToType === 'groups'}
-                        onChange={() => setAssignedToType('groups')}
-                        className="text-emerald-600 focus:ring-emerald-500"
-                      />
-                      Specific Study Groups
-                    </label>
-                  </div>
+      {/* Grade & Feedback Modal - Floating Top Card */}
+      {gradingSub &&
+        createPortal(
+          <div
+            className="floating-modal-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setGradingSub(null);
+            }}
+          >
+            <div
+              className="floating-modal-card text-left"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              {/* Sticky Fixed Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setGradingSub(null)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    title="Go Back"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                    <Award className="w-5 h-5 text-purple-600 shrink-0" />
+                    <span>Grade Submission for {gradingSub.student_name}</span>
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setGradingSub(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-                  {/* Specific Group Checkboxes */}
-                  {assignedToType === 'groups' && (
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
-                      <span className="text-[11px] font-bold text-slate-600 block">
-                        Select Target Study Groups:
-                      </span>
-                      {availableGroups.length > 0 ? (
-                        <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                          {availableGroups.map((g) => {
-                            const isChecked = selectedGroupIds.includes(g.id);
-                            return (
-                              <label
-                                key={g.id}
-                                className="flex items-center gap-2 text-xs text-slate-800 font-medium cursor-pointer"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedGroupIds([...selectedGroupIds, g.id]);
-                                    } else {
-                                      setSelectedGroupIds(selectedGroupIds.filter((id) => id !== g.id));
-                                    }
-                                  }}
-                                  className="rounded text-emerald-600 focus:ring-emerald-500"
-                                />
-                                <span>{g.name} ({g.memberCount} Members)</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-slate-400 italic">No study groups found</p>
-                      )}
+              {/* Scrollable Form Body */}
+              <form onSubmit={handleSaveGrade} className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                  {gradeError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                      {gradeError}
                     </div>
                   )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Grade / Score (e.g., A+, 95/100, Passed)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={gradeValue}
+                      onChange={(e) => setGradeValue(e.target.value)}
+                      placeholder="e.g. A+ or 92/100"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
+                    />
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets:</span>
+                      {['A+ (95/100)', 'A (88/100)', 'B+ (78/100)', 'Pass (100/100)'].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => setGradeValue(preset)}
+                          className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Feedback & Comments for Student
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={gradeFeedback}
+                      onChange={(e) => setGradeFeedback(e.target.value)}
+                      placeholder="Write constructive feedback on the assignment submission..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Floating Sticky Footer */}
-              <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingAsgn || !title.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
-                >
-                  {savingAsgn ? (
-                    <>
-                      <ButtonSpinner className="w-3.5 h-3.5" />
-                      <span>Publishing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{editingAsgn ? 'Update Assignment' : 'Publish Assignment'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Grade & Feedback Modal - Floating Card */}
-      {gradingSub && (
-        <div
-          className="floating-modal-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setGradingSub(null);
-          }}
-        >
-          <div
-            className="floating-modal-card text-left"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            {/* Sticky Fixed Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setGradingSub(null)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                  title="Go Back"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                  <Award className="w-5 h-5 text-purple-600 shrink-0" />
-                  <span>Grade Submission for {gradingSub.student_name}</span>
-                </h3>
-              </div>
-              <button
-                onClick={() => setGradingSub(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+                {/* Floating Sticky Footer */}
+                <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setGradingSub(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={gradingLoading || !gradeValue.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
+                  >
+                    {gradingLoading ? (
+                      <>
+                        <ButtonSpinner className="w-3.5 h-3.5" />
+                        <span>Saving Grade...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Award className="w-3.5 h-3.5" />
+                        <span>Save Grade & Notify Student</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
+          </div>,
+          document.body
+        )}
 
-            {/* Scrollable Form Body */}
-            <form onSubmit={handleSaveGrade} className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-                {gradeError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
-                    {gradeError}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Grade / Score (e.g., A+, 95/100, Passed)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={gradeValue}
-                    onChange={(e) => setGradeValue(e.target.value)}
-                    placeholder="e.g. A+ or 92/100"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-bold"
-                  />
-                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets:</span>
-                    {['A+ (95/100)', 'A (88/100)', 'B+ (78/100)', 'Pass (100/100)'].map((preset) => (
-                      <button
-                        type="button"
-                        key={preset}
-                        onClick={() => setGradeValue(preset)}
-                        className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-[11px] font-bold transition-all cursor-pointer"
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Teacher Feedback & Comments
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={feedbackValue}
-                    onChange={(e) => setFeedbackValue(e.target.value)}
-                    placeholder="Great work on the lab calculations! Matrix representation was clear."
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-medium"
-                  />
-                </div>
-              </div>
-
-              {/* Floating Sticky Footer */}
-              <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setGradingSub(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={gradingLoading || !gradeValue.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
-                >
-                  {gradingLoading ? (
-                    <>
-                      <ButtonSpinner className="w-3.5 h-3.5" />
-                      <span>Saving Grade...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Award className="w-3.5 h-3.5" />
-                      <span>Save Grade & Notify Student</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Create / Edit Course Modal - Floating Card with Always Reachable Submit Button */}
-      {isCourseModalOpen && (
-        <div
-          className="floating-modal-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setIsCourseModalOpen(false);
-          }}
-        >
+      {/* Create / Edit Course Modal - Floating Top Card */}
+      {isCourseModalOpen &&
+        createPortal(
           <div
-            className="floating-modal-card text-left"
-            onMouseDown={(event) => event.stopPropagation()}
+            className="floating-modal-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setIsCourseModalOpen(false);
+            }}
           >
-            {/* Sticky Fixed Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
+            <div
+              className="floating-modal-card text-left"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              {/* Sticky Fixed Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsCourseModalOpen(false)}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    title="Go Back"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                  </button>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
+                    <FolderPlus className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <span>{editingCourse ? 'Edit Course' : 'Create New Course'}</span>
+                  </h3>
+                </div>
                 <button
-                  type="button"
                   onClick={() => setIsCourseModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                  title="Go Back"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                  <FolderPlus className="w-5 h-5 text-indigo-600 shrink-0" />
-                  <span>{editingCourse ? 'Edit Course' : 'Create New Course'}</span>
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsCourseModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Scrollable Form Body with Sticky Footer */}
-            <form onSubmit={handleSaveCourse} className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-                {courseModalError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
-                    {courseModalError}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Course / Subject Title <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={courseFormName}
-                    onChange={(e) => setCourseFormName(e.target.value)}
-                    placeholder="e.g. Organic Chemistry II, Data Structures, Macroeconomics"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
-                  />
-                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions:</span>
-                    {['Computer Science', 'Data Structures', 'Organic Chemistry', 'Calculus', 'Physics', 'Macroeconomics'].map((subj) => (
-                      <button
-                        type="button"
-                        key={subj}
-                        onClick={() => {
-                          setCourseFormName(subj);
-                          const prefix = subj.split(' ').map(w => w[0]).join('').toUpperCase();
-                          setCourseFormCode(`${prefix}-101`);
-                        }}
-                        className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer"
-                      >
-                        {subj}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Course Code <span className="text-slate-400 font-normal">(e.g. CHEM-202, CS-105)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={courseFormCode}
-                    onChange={(e) => setCourseFormCode(e.target.value)}
-                    placeholder="e.g. PHY-101 (Leave empty to auto-generate)"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Course Overview & Description
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={courseFormDesc}
-                    onChange={(e) => setCourseFormDesc(e.target.value)}
-                    placeholder="Provide syllabus highlights, prerequisites, or course overview..."
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
-                  />
-                </div>
               </div>
 
-              {/* Floating Sticky Bottom Action Footer */}
-              <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsCourseModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingCourse || !courseFormName.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
-                >
-                  {savingCourse ? (
-                    <>
-                      <ButtonSpinner className="w-3.5 h-3.5" />
-                      <span>Saving Course...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FolderPlus className="w-3.5 h-3.5" />
-                      <span>{editingCourse ? 'Update Course' : 'Create Course'}</span>
-                    </>
+              {/* Scrollable Form Body with Sticky Footer */}
+              <form onSubmit={handleSaveCourse} className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                  {courseModalError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                      {courseModalError}
+                    </div>
                   )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Course / Subject Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={courseFormName}
+                      onChange={(e) => setCourseFormName(e.target.value)}
+                      placeholder="e.g. Organic Chemistry II, Data Structures, Macroeconomics"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
+                    />
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions:</span>
+                      {['Computer Science', 'Data Structures', 'Organic Chemistry', 'Calculus', 'Physics', 'Macroeconomics'].map((subj) => (
+                        <button
+                          type="button"
+                          key={subj}
+                          onClick={() => {
+                            setCourseFormName(subj);
+                            const prefix = subj.split(' ').map(w => w[0]).join('').toUpperCase();
+                            setCourseFormCode(`${prefix}-101`);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer"
+                        >
+                          {subj}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Course Code <span className="text-slate-400 font-normal">(e.g. CHEM-202, CS-105)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={courseFormCode}
+                      onChange={(e) => setCourseFormCode(e.target.value)}
+                      placeholder="e.g. PHY-101 (Leave empty to auto-generate)"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Course Overview & Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={courseFormDesc}
+                      onChange={(e) => setCourseFormDesc(e.target.value)}
+                      placeholder="Provide syllabus highlights, prerequisites, or course overview..."
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                    />
+                  </div>
+                </div>
+
+                {/* Floating Sticky Bottom Action Footer */}
+                <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsCourseModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingCourse || !courseFormName.trim()}
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
+                  >
+                    {savingCourse ? (
+                      <>
+                        <ButtonSpinner className="w-3.5 h-3.5" />
+                        <span>Saving Course...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FolderPlus className="w-3.5 h-3.5" />
+                        <span>{editingCourse ? 'Update Course' : 'Create Course'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

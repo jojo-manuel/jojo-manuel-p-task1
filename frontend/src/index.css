@@ -494,14 +494,14 @@
 .floating-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  background: rgba(15, 23, 42, 0.62);
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: max(1.25rem, 3.5vh) 1rem 2.5rem 1rem;
+  padding: 1.25rem 1rem 2rem 1rem;
   overflow-y: auto;
   animation: fadeIn 0.2s ease-out both;
 }
@@ -509,21 +509,22 @@
 .floating-modal-card {
   width: 100%;
   max-width: 38rem;
-  max-height: calc(100vh - max(2.5rem, 7vh));
+  margin-top: 0.5rem;
+  max-height: calc(100vh - 2.5rem);
   display: flex;
   flex-direction: column;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 1.5rem;
-  box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.3), 0 0 0 1px rgba(15, 23, 42, 0.08);
-  animation: modalFloatInTop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.08);
+  animation: modalFloatInTop 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   overflow: hidden;
 }
 
 @keyframes modalFloatInTop {
   from {
     opacity: 0;
-    transform: translateY(-24px) scale(0.97);
+    transform: translateY(-28px) scale(0.97);
   }
   to {
     opacity: 1;
