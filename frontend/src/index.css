@@ -470,24 +470,13 @@
 
 .modal-sheet {
   width: 100%;
-  max-width: 34rem;
-  max-height: min(92dvh, 780px);
+  max-width: 36rem;
+  max-height: min(90dvh, 760px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  border-radius: 1.25rem 1.25rem 0 0;
+  border-radius: 1.25rem;
   background: #ffffff;
-  animation: sheetIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-  padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
-}
-
-.modal-sheet::before {
-  content: "";
-  display: block;
-  width: 2.5rem;
-  height: 0.3rem;
-  background: #cbd5e1;
-  border-radius: 999px;
-  margin: 0.6rem auto 0.85rem;
+  animation: fadeIn 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Floating Top-Aligned Modal Card */
@@ -653,26 +642,26 @@
   }
 
   .modal-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: flex-start;
+    padding: 1rem;
   }
 
   .modal-sheet {
-    border-radius: 1.25rem 1.25rem 0 0;
-    max-height: calc(100dvh - 0.5rem);
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    border-radius: 1.25rem;
+    max-height: calc(100dvh - 2rem);
+    padding-bottom: 0.5rem;
   }
 }
 
 @media (min-width: 640px) {
   .modal-overlay {
-    align-items: center;
+    align-items: flex-start;
     padding: 1.5rem;
   }
 
   .modal-sheet {
     border-radius: 1.25rem;
-    max-width: 34rem;
+    max-width: 36rem;
   }
 }
 
