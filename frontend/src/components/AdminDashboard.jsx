@@ -71,6 +71,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
   // Course Modal State (Create / Edit)
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+  const [courseAnchorRect, setCourseAnchorRect] = useState(null);
   const [editingCourse, setEditingCourse] = useState(null);
   const [courseFormName, setCourseFormName] = useState('');
   const [courseFormCode, setCourseFormCode] = useState('');
@@ -83,6 +84,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
   // Assignment Modal State (Create / Edit)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [asgnAnchorRect, setAsgnAnchorRect] = useState(null);
   const [editingAsgn, setEditingAsgn] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -212,8 +214,58 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
     fetchStudents();
   }, [token]);
 
+  // Compute dynamic anchored position for popups near trigger button
+  const getAnchoredStyle = (rect, targetWidth = 500) => {
+    if (typeof window === 'undefined') return {};
+    const width = Math.min(targetWidth, window.innerWidth - 24);
+    
+    if (!rect) {
+      return {
+        top: '1.25rem',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: `${width}px`,
+        position: 'fixed'
+      };
+    }
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUp = spaceBelow < 380 && spaceAbove > spaceBelow;
+    
+    // Anchor aligned horizontally near button, clamped within viewport bounds
+    let left = rect.left;
+    if (left + width > window.innerWidth - 16) {
+      left = Math.max(12, window.innerWidth - width - 16);
+    }
+    if (left < 12) left = 12;
+
+    if (openUp) {
+      return {
+        left: `${left}px`,
+        bottom: `${Math.max(12, window.innerHeight - rect.top + 8)}px`,
+        maxHeight: `${Math.min(640, rect.top - 16)}px`,
+        width: `${width}px`,
+        position: 'fixed'
+      };
+    }
+
+    return {
+      left: `${left}px`,
+      top: `${Math.max(12, rect.bottom + 8)}px`,
+      maxHeight: `${Math.min(640, window.innerHeight - rect.bottom - 16)}px`,
+      width: `${width}px`,
+      position: 'fixed'
+    };
+  };
+
   // Course Modal Handlers
-  const handleOpenCreateCourseModal = () => {
+  const handleOpenCreateCourseModal = (event) => {
+    if (event?.currentTarget) {
+      setCourseAnchorRect(event.currentTarget.getBoundingClientRect());
+    } else {
+      setCourseAnchorRect(null);
+    }
     setEditingCourse(null);
     setCourseFormName('');
     setCourseFormCode('');
@@ -222,7 +274,12 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
     setIsCourseModalOpen(true);
   };
 
-  const handleOpenEditCourseModal = (course) => {
+  const handleOpenEditCourseModal = (course, event) => {
+    if (event?.currentTarget) {
+      setCourseAnchorRect(event.currentTarget.getBoundingClientRect());
+    } else {
+      setCourseAnchorRect(null);
+    }
     setEditingCourse(course);
     setCourseFormName(course.course_name || '');
     setCourseFormCode(course.course_code || '');
@@ -297,7 +354,12 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
   };
 
   // Open modal for new assignment
-  const handleOpenCreateModal = (prefillCourseName) => {
+  const handleOpenCreateModal = (prefillCourseName, event) => {
+    if (event?.currentTarget) {
+      setAsgnAnchorRect(event.currentTarget.getBoundingClientRect());
+    } else {
+      setAsgnAnchorRect(null);
+    }
     setEditingAsgn(null);
     setTitle('');
     setDescription('');
@@ -318,7 +380,12 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
   };
 
   // Open modal for editing assignment
-  const handleOpenEditModal = (asgn) => {
+  const handleOpenEditModal = (asgn, event) => {
+    if (event?.currentTarget) {
+      setAsgnAnchorRect(event.currentTarget.getBoundingClientRect());
+    } else {
+      setAsgnAnchorRect(null);
+    }
     setEditingAsgn(asgn);
     setTitle(asgn.title || '');
     setDescription(asgn.description || '');
@@ -1806,22 +1873,23 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
         </div>
       )}
 
-      {/* Create / Edit Assignment Modal - Floating Top Card */}
+      {/* Create / Edit Assignment Modal - Anchored Near Trigger Button */}
       {isModalOpen &&
         createPortal(
           <div
-            className="floating-modal-overlay"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsModalOpen(false);
             }}
           >
             <div
-              className="floating-modal-card text-left"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
+              style={getAnchoredStyle(asgnAnchorRect, 540)}
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Sticky Fixed Header */}
               <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
@@ -2131,13 +2199,13 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {gradingSub &&
         createPortal(
           <div
-            className="floating-modal-overlay"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-6 px-4 animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setGradingSub(null);
             }}
           >
             <div
-              className="floating-modal-card text-left"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left w-full max-w-lg max-h-[calc(100vh-3rem)] animate-pop-in"
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Sticky Fixed Header */}
@@ -2247,17 +2315,18 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
           document.body
         )}
 
-      {/* Create / Edit Course Modal - Sleek Top-Floating Dialog */}
+      {/* Create / Edit Course Modal - Anchored Near Trigger Button */}
       {isCourseModalOpen &&
         createPortal(
           <div
-            className="floating-modal-overlay"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsCourseModalOpen(false);
             }}
           >
             <div
-              className="floating-modal-card text-left"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
+              style={getAnchoredStyle(courseAnchorRect, 480)}
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Header with gradient icon */}
@@ -2271,42 +2340,37 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-200">
-                    <FolderPlus className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center shrink-0">
+                    <FolderPlus className="w-4.5 h-4.5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-extrabold text-slate-900 truncate">
-                        {editingCourse ? 'Edit Course Details' : 'Create New Course'}
-                      </h3>
-                      <span className="hidden xs:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        Faculty Tool
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {editingCourse ? 'Update syllabus and course identifiers' : 'Add a new subject to post coursework & organize groups'}
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
+                      {editingCourse ? 'Edit Course Details' : 'Create New Course'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {editingCourse ? 'Update syllabus & identifiers' : 'Add new subject to curriculum'}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsCourseModalOpen(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4.5 h-4.5" />
                 </button>
               </div>
 
               {/* Scrollable Form Body with Refined Inputs */}
               <form onSubmit={handleSaveCourse} className="flex flex-col flex-1 min-h-0">
-                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
                   {courseModalError && (
-                    <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                       <span>{courseModalError}</span>
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-800">
                       Course Title / Subject Name <span className="text-rose-500">*</span>
                     </label>
@@ -2315,18 +2379,17 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                       required
                       value={courseFormName}
                       onChange={(e) => setCourseFormName(e.target.value)}
-                      placeholder="e.g. Organic Chemistry II, Data Structures, Macroeconomics"
-                      className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-semibold text-slate-900 transition-all placeholder:text-slate-400"
+                      placeholder="e.g. Organic Chemistry II, Data Structures"
+                      className="w-full px-3.5 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-semibold text-slate-900 transition-all placeholder:text-slate-400"
                     />
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions:</span>
+                    <div className="flex items-center gap-1 flex-wrap pt-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Quick:</span>
                       {[
                         { title: 'Computer Science', code: 'CS-101' },
                         { title: 'Data Structures', code: 'CS-201' },
                         { title: 'Organic Chemistry', code: 'CHEM-202' },
                         { title: 'Calculus III', code: 'MATH-301' },
-                        { title: 'Applied Physics', code: 'PHY-101' },
-                        { title: 'Economics', code: 'ECON-100' }
+                        { title: 'Applied Physics', code: 'PHY-101' }
                       ].map((subj) => (
                         <button
                           type="button"
@@ -2335,7 +2398,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                             setCourseFormName(subj.title);
                             setCourseFormCode(subj.code);
                           }}
-                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer shadow-2xs"
+                          className="px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer"
                         >
                           {subj.title}
                         </button>
@@ -2343,54 +2406,54 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-slate-800">
-                        Course Code / Identifier
+                        Course Code
                       </label>
-                      <span className="text-[10px] text-slate-400 font-medium">Optional (Auto-generated if blank)</span>
+                      <span className="text-[10px] text-slate-400">Optional</span>
                     </div>
                     <input
                       type="text"
                       value={courseFormCode}
                       onChange={(e) => setCourseFormCode(e.target.value)}
                       placeholder="e.g. PHY-101, CS-201"
-                      className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-mono font-semibold text-slate-900 transition-all placeholder:text-slate-400"
+                      className="w-full px-3.5 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-mono font-semibold text-slate-900 transition-all"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-xs font-bold text-slate-800">
-                      Course Description & Guidelines
+                      Course Description (Optional)
                     </label>
                     <textarea
-                      rows={3}
+                      rows={2}
                       value={courseFormDesc}
                       onChange={(e) => setCourseFormDesc(e.target.value)}
-                      placeholder="Provide syllabus highlights, prerequisites, or lab requirements..."
-                      className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-medium text-slate-900 transition-all placeholder:text-slate-400"
+                      placeholder="Syllabus highlights, prerequisites..."
+                      className="w-full px-3.5 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-medium text-slate-900 transition-all placeholder:text-slate-400"
                     />
                   </div>
                 </div>
 
                 {/* Floating Sticky Action Footer */}
-                <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                <div className="p-3.5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsCourseModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Cancel
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={savingCourse || !courseFormName.trim()}
-                    className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-200 flex items-center gap-1.5 min-h-11 cursor-pointer"
+                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
                     {savingCourse ? (
                       <>
                         <ButtonSpinner className="w-3.5 h-3.5" />
-                        <span>Saving Course...</span>
+                        <span>Saving...</span>
                       </>
                     ) : (
                       <>
