@@ -2061,7 +2061,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                         type="file"
                         accept="application/pdf"
                         id="pdf-upload-input"
-                        onChange={handlePdfUpload}
+                        onChange={handlePdfFileSelect}
                         disabled={pdfUploading}
                         className="hidden"
                       />
