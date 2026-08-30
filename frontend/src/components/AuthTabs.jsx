@@ -62,9 +62,20 @@ export default function AuthTabs({ onRegister, onLogin, onGoogleCredential, load
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 text-sm flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-            <p>{error}</p>
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-start justify-between gap-2 text-left">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+              <p className="font-semibold text-xs leading-relaxed">{error}</p>
+            </div>
+            {error.toLowerCase().includes('already exists') && activeTab === 'register' && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('login')}
+                className="shrink-0 text-xs font-bold text-indigo-700 hover:text-indigo-900 underline ml-2 cursor-pointer"
+              >
+                Sign in →
+              </button>
+            )}
           </div>
         )}
 
