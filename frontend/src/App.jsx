@@ -407,14 +407,13 @@ function App() {
       {isNotificationsOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/20 backdrop-blur-[2px] animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/20 backdrop-blur-[2px] animate-fade-in flex items-start justify-end pt-16 pr-4 sm:pr-8"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsNotificationsOpen(false);
             }}
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden text-left animate-pop-in"
-              style={getAnchoredStyle(notifAnchorRect, 440, 560)}
+              className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden text-left animate-pop-in max-h-[calc(100vh-5rem)]"
               onMouseDown={(event) => event.stopPropagation()}
             >
               <NotificationCenter

@@ -716,7 +716,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       {selectedAsgn &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setSelectedAsgn(null);
             }}

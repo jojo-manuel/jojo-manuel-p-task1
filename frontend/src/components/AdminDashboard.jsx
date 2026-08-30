@@ -1866,7 +1866,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {isModalOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsModalOpen(false);
             }}
@@ -2254,7 +2254,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {gradingSub &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setGradingSub(null);
             }}
@@ -2375,7 +2375,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {isCourseModalOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsCourseModalOpen(false);
             }}
