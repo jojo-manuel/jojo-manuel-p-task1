@@ -716,14 +716,13 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       {selectedAsgn &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/50 backdrop-blur-[4px] flex items-start justify-center pt-3 sm:pt-6 px-3 sm:px-4 overflow-y-auto animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setSelectedAsgn(null);
             }}
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
-              style={getAnchoredStyle(submitAnchorRect, 580, 680)}
+              className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-950/30 flex flex-col overflow-hidden text-left w-full max-w-xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)] my-0"
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Fixed Header */}

@@ -1862,18 +1862,17 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
         </div>
       )}
 
-      {/* Create / Edit Assignment Modal - Anchored Near Trigger Button */}
+      {/* Create / Edit Assignment Modal - Floating Top Card */}
       {isModalOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/50 backdrop-blur-[4px] flex items-start justify-center pt-3 sm:pt-6 px-3 sm:px-4 overflow-y-auto animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsModalOpen(false);
             }}
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
-              style={getAnchoredStyle(asgnAnchorRect, 540)}
+              className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-950/30 flex flex-col overflow-hidden text-left w-full max-w-xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)] my-0"
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Sticky Fixed Header */}
@@ -2254,14 +2253,13 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {gradingSub &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/50 backdrop-blur-[4px] flex items-start justify-center pt-3 sm:pt-6 px-3 sm:px-4 overflow-y-auto animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setGradingSub(null);
             }}
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
-              style={getAnchoredStyle(gradingAnchorRect, 520, 640)}
+              className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-950/30 flex flex-col overflow-hidden text-left w-full max-w-lg max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)] my-0"
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Sticky Fixed Header */}
@@ -2371,18 +2369,17 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
           document.body
         )}
 
-      {/* Create / Edit Course Modal - Anchored Near Trigger Button */}
+      {/* Create / Edit Course Modal - Floating Top Card */}
       {isCourseModalOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-4 sm:pt-6 px-3 sm:px-4 animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/50 backdrop-blur-[4px] flex items-start justify-center pt-3 sm:pt-6 px-3 sm:px-4 overflow-y-auto animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setIsCourseModalOpen(false);
             }}
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
-              style={getAnchoredStyle(courseAnchorRect, 480)}
+              className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-2xl shadow-slate-950/30 flex flex-col overflow-hidden text-left w-full max-w-md max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)] my-0"
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Header with gradient icon */}
