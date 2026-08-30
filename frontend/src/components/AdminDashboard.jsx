@@ -214,6 +214,24 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
     fetchStudents();
   }, [token]);
 
+  // Lock background body scroll when any modal/popup is open
+  useEffect(() => {
+    const isAnyModalOpen = isModalOpen || isCourseModalOpen || Boolean(gradingSub);
+    if (isAnyModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      const originalPaddingRight = document.body.style.paddingRight;
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      if (scrollBarWidth > 0) {
+        document.body.style.paddingRight = `${scrollBarWidth}px`;
+      }
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = originalPaddingRight;
+      };
+    }
+  }, [isModalOpen, isCourseModalOpen, gradingSub]);
+
   // Compute dynamic anchored position for popups near trigger button
   const getAnchoredStyle = (rect, targetWidth = 500) => {
     if (typeof window === 'undefined') return {};

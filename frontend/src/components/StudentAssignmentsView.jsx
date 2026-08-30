@@ -50,6 +50,23 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
     fetchGroups();
   }, [token]);
 
+  // Lock background body scroll when submission modal is open
+  useEffect(() => {
+    if (selectedAsgn) {
+      const originalOverflow = document.body.style.overflow;
+      const originalPaddingRight = document.body.style.paddingRight;
+      const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+      if (scrollBarWidth > 0) {
+        document.body.style.paddingRight = `${scrollBarWidth}px`;
+      }
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = originalPaddingRight;
+      };
+    }
+  }, [selectedAsgn]);
+
   const fetchGroups = async () => {
     try {
       const res = await fetch('/api/groups', {
