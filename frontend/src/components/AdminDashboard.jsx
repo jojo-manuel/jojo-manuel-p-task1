@@ -241,52 +241,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
     }
   }, [isModalOpen, isCourseModalOpen, gradingSub]);
 
-  // Compute dynamic anchored position for popups near trigger button
-  const getAnchoredStyle = (rect, targetWidth = 540) => {
-    if (typeof window === 'undefined') return {};
-    const width = Math.min(targetWidth, window.innerWidth - 24);
-    const maxModalHeight = Math.min(window.innerHeight - 36, 680);
-    
-    if (!rect) {
-      return {
-        top: '1.25rem',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: `${width}px`,
-        maxHeight: `${maxModalHeight}px`,
-        position: 'fixed'
-      };
-    }
 
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    const openUp = spaceBelow < 400 && spaceAbove > spaceBelow;
-    
-    // Anchor aligned horizontally near button, clamped within viewport bounds
-    let left = rect.left;
-    if (left + width > window.innerWidth - 16) {
-      left = Math.max(12, window.innerWidth - width - 16);
-    }
-    if (left < 12) left = 12;
-
-    if (openUp) {
-      return {
-        left: `${left}px`,
-        bottom: `${Math.max(12, window.innerHeight - rect.top + 8)}px`,
-        maxHeight: `${Math.min(maxModalHeight, rect.top - 16)}px`,
-        width: `${width}px`,
-        position: 'fixed'
-      };
-    }
-
-    return {
-      left: `${left}px`,
-      top: `${Math.min(window.innerHeight - maxModalHeight - 16, Math.max(12, rect.bottom + 8))}px`,
-      maxHeight: `${maxModalHeight}px`,
-      width: `${width}px`,
-      position: 'fixed'
-    };
-  };
 
   // Course Modal Handlers
   const handleOpenCreateCourseModal = (event) => {

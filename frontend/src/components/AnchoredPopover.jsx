@@ -2,58 +2,34 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
-export function getAnchoredStyle(rect, targetWidth = 520, targetMaxHeight = 650) {
+export function getAnchoredStyle(rect, targetWidth = 540, targetMaxHeight = 680) {
   if (typeof window === 'undefined') return {};
-  const margin = 12;
-  const offset = 8;
+  const margin = 16;
   const width = Math.min(targetWidth, window.innerWidth - margin * 2);
-  const maxModalHeight = Math.min(window.innerHeight - margin * 2, targetMaxHeight);
 
-  if (!rect) {
-    return {
-      position: 'fixed',
-      top: `${margin}px`,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: `${width}px`,
-      maxHeight: `${maxModalHeight}px`,
-      zIndex: 99999
-    };
+  // ALWAYS pop up at the top of the viewport/page!
+  let top = 16; // 16px from top of screen
+
+  // If trigger button is in top navbar (e.g., notification bell), position right below navbar
+  if (rect && rect.top >= 0 && rect.bottom <= 100) {
+    top = Math.max(12, rect.bottom + 6);
   }
 
-  // Calculate left alignment near button, clamped within viewport bounds
-  let left = rect.left;
+  // Align horizontally near button or center near top of screen
+  let left = rect ? rect.left : (window.innerWidth - width) / 2;
   if (left + width > window.innerWidth - margin) {
     left = Math.max(margin, window.innerWidth - width - margin);
   }
   if (left < margin) left = margin;
 
-  const spaceBelow = window.innerHeight - rect.bottom;
-  const spaceAbove = rect.top;
-  const openUpward = spaceBelow < Math.min(maxModalHeight, 360) && spaceAbove > spaceBelow;
-
-  if (openUpward) {
-    const computedMaxHeight = Math.min(maxModalHeight, Math.max(180, rect.top - margin - offset));
-    const topPos = Math.max(margin, rect.top - computedMaxHeight - offset);
-    return {
-      position: 'fixed',
-      left: `${left}px`,
-      top: `${topPos}px`,
-      width: `${width}px`,
-      maxHeight: `${computedMaxHeight}px`,
-      zIndex: 99999
-    };
-  }
-
-  const computedMaxHeight = Math.min(maxModalHeight, Math.max(180, window.innerHeight - rect.bottom - margin - offset));
-  const topPos = Math.min(window.innerHeight - computedMaxHeight - margin, Math.max(margin, rect.bottom + offset));
+  const maxModalHeight = Math.min(window.innerHeight - top - margin, targetMaxHeight);
 
   return {
     position: 'fixed',
+    top: `${top}px`,
     left: `${left}px`,
-    top: `${topPos}px`,
     width: `${width}px`,
-    maxHeight: `${computedMaxHeight}px`,
+    maxHeight: `${maxModalHeight}px`,
     zIndex: 99999
   };
 }
