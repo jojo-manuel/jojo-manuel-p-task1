@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Navbar from './components/Navbar';
 import AuthLayout from './components/AuthLayout';
 import AuthTabs from './components/AuthTabs';
@@ -7,6 +8,8 @@ import OnboardingForm from './components/OnboardingForm';
 import TeacherOnboardingForm from './components/TeacherOnboardingForm';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import NotificationCenter from './components/NotificationCenter';
+import { getAnchoredStyle } from './components/AnchoredPopover';
 import { useToast } from './components/Toast';
 import { FullPageLoader } from './components/LoadingSpinner';
 import './App.css';
@@ -43,6 +46,14 @@ function App() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifAnchorRect, setNotifAnchorRect] = useState(null);
+
+  const handleToggleNotifications = (event) => {
+    if (event?.currentTarget) {
+      setNotifAnchorRect(event.currentTarget.getBoundingClientRect());
+    }
+    setIsNotificationsOpen((prev) => !prev);
+  };
 
   const handleGoHome = () => {
     setIsEditingProfile(false);
@@ -384,13 +395,38 @@ function App() {
         onLogout={handleLogout}
         onGoHome={handleGoHome}
         unreadNotificationsCount={unreadCount}
-        onToggleNotifications={() => setIsNotificationsOpen(!isNotificationsOpen)}
+        onToggleNotifications={handleToggleNotifications}
         isNotificationsOpen={isNotificationsOpen}
       />
 
       <main className={`flex-1 w-full max-w-7xl mx-auto min-w-0 ${user ? 'app-main-app' : 'app-main-auth'}`}>
         {renderCurrentView()}
       </main>
+
+      {/* Notifications Pop Up Menu - Anchored Near Notification Bell Button */}
+      {isNotificationsOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] bg-slate-950/20 backdrop-blur-[2px] animate-fade-in"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setIsNotificationsOpen(false);
+            }}
+          >
+            <div
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden text-left animate-pop-in"
+              style={getAnchoredStyle(notifAnchorRect, 440, 560)}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <NotificationCenter
+                notifications={notifications}
+                token={token}
+                onRefresh={() => fetchNotifications(token)}
+                onClose={() => setIsNotificationsOpen(false)}
+              />
+            </div>
+          </div>,
+          document.body
+        )}
 
       <footer className="app-footer">
         <p>Joineazy · coursework, groups, and faculty tools in one portal</p>

@@ -35,7 +35,7 @@ import {
   ChevronDown,
   Calendar
 } from 'lucide-react';
-import { DateTimeField } from './AnchoredPopover';
+import { DateTimeField, getAnchoredStyle } from './AnchoredPopover';
 import { useToast } from './Toast';
 import { LoadingSpinner, ButtonSpinner, SkeletonList, SkeletonCourses } from './LoadingSpinner';
 
@@ -112,6 +112,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
   // Grading Modal State
   const [gradingSub, setGradingSub] = useState(null);
+  const [gradingAnchorRect, setGradingAnchorRect] = useState(null);
   const [gradeValue, setGradeValue] = useState('');
   const [feedbackValue, setFeedbackValue] = useState('');
   const [gradingLoading, setGradingLoading] = useState(false);
@@ -1487,7 +1488,10 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
                                         <button
                                           type="button"
-                                          onClick={() => {
+                                          onClick={(e) => {
+                                            if (e?.currentTarget) {
+                                              setGradingAnchorRect(e.currentTarget.getBoundingClientRect());
+                                            }
                                             setGradingSub({
                                               ...sub,
                                               assignment_title: selectedAsgn.title,
@@ -2295,13 +2299,14 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       {gradingSub &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] flex items-start justify-center pt-6 px-4 animate-fade-in"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setGradingSub(null);
             }}
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left w-full max-w-lg max-h-[calc(100vh-3rem)] animate-pop-in"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
+              style={getAnchoredStyle(gradingAnchorRect, 520, 640)}
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Sticky Fixed Header */}

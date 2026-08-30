@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { LoadingSpinner, ButtonSpinner, SkeletonList } from './LoadingSpinner';
+import { getAnchoredStyle } from './AnchoredPopover';
 
 export default function StudentGroupManager({ user, token, onGroupUpdated }) {
   const { toast } = useToast();
@@ -30,6 +31,7 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
   const [groupProgress, setGroupProgress] = useState(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createAnchorRect, setCreateAnchorRect] = useState(null);
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [creating, setCreating] = useState(false);
@@ -264,7 +266,10 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
           </p>
         </div>
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={(e) => {
+            setCreateAnchorRect(e.currentTarget.getBoundingClientRect());
+            setIsCreateModalOpen(true);
+          }}
           className="btn-primary text-sm py-2.5 px-4 w-full sm:w-auto min-h-11"
         >
           <PlusCircle className="w-4 h-4" /> New group
@@ -579,13 +584,14 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
       {/* Create Group Modal - Floating Card */}
       {isCreateModalOpen && (
         <div
-          className="floating-modal-overlay"
+          className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setIsCreateModalOpen(false);
           }}
         >
           <div
-            className="floating-modal-card text-left"
+            className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
+            style={getAnchoredStyle(createAnchorRect, 480, 560)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             {/* Sticky Fixed Header */}

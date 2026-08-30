@@ -2,6 +2,62 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
+export function getAnchoredStyle(rect, targetWidth = 520, targetMaxHeight = 650) {
+  if (typeof window === 'undefined') return {};
+  const margin = 12;
+  const offset = 8;
+  const width = Math.min(targetWidth, window.innerWidth - margin * 2);
+  const maxModalHeight = Math.min(window.innerHeight - margin * 2, targetMaxHeight);
+
+  if (!rect) {
+    return {
+      position: 'fixed',
+      top: `${margin}px`,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: `${width}px`,
+      maxHeight: `${maxModalHeight}px`,
+      zIndex: 99999
+    };
+  }
+
+  // Calculate left alignment near button, clamped within viewport bounds
+  let left = rect.left;
+  if (left + width > window.innerWidth - margin) {
+    left = Math.max(margin, window.innerWidth - width - margin);
+  }
+  if (left < margin) left = margin;
+
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  const openUpward = spaceBelow < Math.min(maxModalHeight, 360) && spaceAbove > spaceBelow;
+
+  if (openUpward) {
+    const computedMaxHeight = Math.min(maxModalHeight, Math.max(180, rect.top - margin - offset));
+    const topPos = Math.max(margin, rect.top - computedMaxHeight - offset);
+    return {
+      position: 'fixed',
+      left: `${left}px`,
+      top: `${topPos}px`,
+      width: `${width}px`,
+      maxHeight: `${computedMaxHeight}px`,
+      zIndex: 99999
+    };
+  }
+
+  const computedMaxHeight = Math.min(maxModalHeight, Math.max(180, window.innerHeight - rect.bottom - margin - offset));
+  const topPos = Math.min(window.innerHeight - computedMaxHeight - margin, Math.max(margin, rect.bottom + offset));
+
+  return {
+    position: 'fixed',
+    left: `${left}px`,
+    top: `${topPos}px`,
+    width: `${width}px`,
+    maxHeight: `${computedMaxHeight}px`,
+    zIndex: 99999
+  };
+}
+
 function useAnchoredPosition(open, anchorRef, estimatedHeight = 220) {
   const [style, setStyle] = useState({ top: 0, left: 0, width: 0 });
 
@@ -10,24 +66,33 @@ function useAnchoredPosition(open, anchorRef, estimatedHeight = 220) {
 
     const update = () => {
       const rect = anchorRef.current.getBoundingClientRect();
-      const width = rect.width;
+      const width = Math.max(rect.width, 180);
       const spaceBelow = window.innerHeight - rect.bottom;
-      const openUp = spaceBelow < estimatedHeight && rect.top > spaceBelow;
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+      const spaceAbove = rect.top;
+      const openUp = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+      let left = rect.left;
+      if (left + width > window.innerWidth - 12) {
+        left = Math.max(12, window.innerWidth - width - 12);
+      }
+      if (left < 12) left = 12;
 
       if (openUp) {
         setStyle({
-          left,
-          width,
-          bottom: window.innerHeight - rect.top + 6,
-          top: 'auto'
+          left: `${left}px`,
+          bottom: `${Math.max(8, window.innerHeight - rect.top + 6)}px`,
+          top: 'auto',
+          minWidth: `${width}px`,
+          position: 'fixed',
+          zIndex: 99999
         });
       } else {
         setStyle({
-          left,
-          width,
-          top: rect.bottom + 6,
-          bottom: 'auto'
+          left: `${left}px`,
+          top: `${Math.min(window.innerHeight - estimatedHeight - 8, rect.bottom + 6)}px`,
+          bottom: 'auto',
+          minWidth: `${width}px`,
+          position: 'fixed',
+          zIndex: 99999
         });
       }
     };

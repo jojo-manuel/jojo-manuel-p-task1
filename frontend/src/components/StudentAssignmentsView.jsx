@@ -21,7 +21,7 @@ import {
   ArrowLeft,
   Search
 } from 'lucide-react';
-import { PopoverSelect } from './AnchoredPopover';
+import { PopoverSelect, getAnchoredStyle } from './AnchoredPopover';
 import { useToast } from './Toast';
 import { SkeletonCardGrid, ButtonSpinner, LoadingSpinner } from './LoadingSpinner';
 
@@ -36,6 +36,7 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
   const [searchTerm, setSearchTerm] = useState('');
 
   const [selectedAsgn, setSelectedAsgn] = useState(null);
+  const [submitAnchorRect, setSubmitAnchorRect] = useState(null);
   const [submitStep, setSubmitStep] = useState(1);
   const [hasConfirmedUpload, setHasConfirmedUpload] = useState(false);
   const [submissionLink, setSubmissionLink] = useState('');
@@ -111,7 +112,12 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
     }
   };
 
-  const handleOpenSubmitModal = (asgn) => {
+  const handleOpenSubmitModal = (asgn, event) => {
+    if (event?.currentTarget) {
+      setSubmitAnchorRect(event.currentTarget.getBoundingClientRect());
+    } else {
+      setSubmitAnchorRect(null);
+    }
     setSelectedAsgn(asgn);
     setSubmitStep(1);
     setHasConfirmedUpload(false);
@@ -710,13 +716,14 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       {selectedAsgn &&
         createPortal(
           <div
-            className="floating-modal-overlay"
+            className="fixed inset-0 z-[9999] bg-slate-950/40 backdrop-blur-[3px] animate-fade-in"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setSelectedAsgn(null);
             }}
           >
             <div
-              className="floating-modal-card text-left"
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-2xl shadow-slate-900/25 flex flex-col overflow-hidden text-left animate-pop-in"
+              style={getAnchoredStyle(submitAnchorRect, 580, 680)}
               onMouseDown={(event) => event.stopPropagation()}
             >
               {/* Fixed Header */}

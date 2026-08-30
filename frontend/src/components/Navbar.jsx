@@ -45,7 +45,7 @@ export default function Navbar({
               {user.role === 'student' && onToggleNotifications && (
                 <button
                   type="button"
-                  onClick={onToggleNotifications}
+                  onClick={(e) => onToggleNotifications && onToggleNotifications(e)}
                   aria-label="Notifications"
                   className={`relative h-9 w-9 rounded-xl flex items-center justify-center transition-all ${
                     isNotificationsOpen
