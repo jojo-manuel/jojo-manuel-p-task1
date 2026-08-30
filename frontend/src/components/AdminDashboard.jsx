@@ -449,6 +449,8 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
     toast.info('Attached PDF document removed');
   };
 
+  const handlePdfUpload = handlePdfFileSelect;
+
   // Save assignment (Create / Update)
   const handleSaveAssignment = async (e) => {
     e.preventDefault();
