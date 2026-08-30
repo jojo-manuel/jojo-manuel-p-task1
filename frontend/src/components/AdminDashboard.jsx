@@ -240,9 +240,10 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
   }, [isModalOpen, isCourseModalOpen, gradingSub]);
 
   // Compute dynamic anchored position for popups near trigger button
-  const getAnchoredStyle = (rect, targetWidth = 500) => {
+  const getAnchoredStyle = (rect, targetWidth = 540) => {
     if (typeof window === 'undefined') return {};
     const width = Math.min(targetWidth, window.innerWidth - 24);
+    const maxModalHeight = Math.min(window.innerHeight - 36, 680);
     
     if (!rect) {
       return {
@@ -250,13 +251,14 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
         left: '50%',
         transform: 'translateX(-50%)',
         width: `${width}px`,
+        maxHeight: `${maxModalHeight}px`,
         position: 'fixed'
       };
     }
 
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    const openUp = spaceBelow < 380 && spaceAbove > spaceBelow;
+    const openUp = spaceBelow < 400 && spaceAbove > spaceBelow;
     
     // Anchor aligned horizontally near button, clamped within viewport bounds
     let left = rect.left;
@@ -269,7 +271,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
       return {
         left: `${left}px`,
         bottom: `${Math.max(12, window.innerHeight - rect.top + 8)}px`,
-        maxHeight: `${Math.min(640, rect.top - 16)}px`,
+        maxHeight: `${Math.min(maxModalHeight, rect.top - 16)}px`,
         width: `${width}px`,
         position: 'fixed'
       };
@@ -277,8 +279,8 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
     return {
       left: `${left}px`,
-      top: `${Math.max(12, rect.bottom + 8)}px`,
-      maxHeight: `${Math.min(640, window.innerHeight - rect.bottom - 16)}px`,
+      top: `${Math.min(window.innerHeight - maxModalHeight - 16, Math.max(12, rect.bottom + 8))}px`,
+      maxHeight: `${maxModalHeight}px`,
       width: `${width}px`,
       position: 'fixed'
     };
@@ -1940,7 +1942,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
               {/* Scrollable Form Body */}
               <form onSubmit={handleSaveAssignment} className="flex flex-col flex-1 min-h-0">
-                <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                <div className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-5 sm:p-6 space-y-4">
                   {modalError && (
                     <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
                       {modalError}
@@ -2389,7 +2391,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
 
               {/* Scrollable Form Body with Refined Inputs */}
               <form onSubmit={handleSaveCourse} className="flex flex-col flex-1 min-h-0">
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
+                <div className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain p-4 sm:p-5 space-y-3.5">
                   {courseModalError && (
                     <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
