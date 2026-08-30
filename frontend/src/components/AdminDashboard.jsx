@@ -2247,7 +2247,7 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
           document.body
         )}
 
-      {/* Create / Edit Course Modal - Floating Top Card */}
+      {/* Create / Edit Course Modal - Sleek Top-Floating Dialog */}
       {isCourseModalOpen &&
         createPortal(
           <div
@@ -2260,42 +2260,55 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
               className="floating-modal-card text-left"
               onMouseDown={(event) => event.stopPropagation()}
             >
-              {/* Sticky Fixed Header */}
+              {/* Header with gradient icon */}
               <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
                   <button
                     type="button"
                     onClick={() => setIsCourseModalOpen(false)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                     title="Go Back"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 min-w-0">
-                    <FolderPlus className="w-5 h-5 text-indigo-600 shrink-0" />
-                    <span>{editingCourse ? 'Edit Course' : 'Create New Course'}</span>
-                  </h3>
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-200">
+                    <FolderPlus className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-extrabold text-slate-900 truncate">
+                        {editingCourse ? 'Edit Course Details' : 'Create New Course'}
+                      </h3>
+                      <span className="hidden xs:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Faculty Tool
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate mt-0.5">
+                      {editingCourse ? 'Update syllabus and course identifiers' : 'Add a new subject to post coursework & organize groups'}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setIsCourseModalOpen(false)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Scrollable Form Body with Sticky Footer */}
+              {/* Scrollable Form Body with Refined Inputs */}
               <form onSubmit={handleSaveCourse} className="flex flex-col flex-1 min-h-0">
                 <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
                   {courseModalError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
-                      {courseModalError}
+                    <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{courseModalError}</span>
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Course / Subject Title <span className="text-rose-500">*</span>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Course Title / Subject Name <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -2303,67 +2316,76 @@ export default function AdminDashboard({ token, navHomeTrigger }) {
                       value={courseFormName}
                       onChange={(e) => setCourseFormName(e.target.value)}
                       placeholder="e.g. Organic Chemistry II, Data Structures, Macroeconomics"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-semibold"
+                      className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-semibold text-slate-900 transition-all placeholder:text-slate-400"
                     />
-                    <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Suggestions:</span>
-                      {['Computer Science', 'Data Structures', 'Organic Chemistry', 'Calculus', 'Physics', 'Macroeconomics'].map((subj) => (
+                      {[
+                        { title: 'Computer Science', code: 'CS-101' },
+                        { title: 'Data Structures', code: 'CS-201' },
+                        { title: 'Organic Chemistry', code: 'CHEM-202' },
+                        { title: 'Calculus III', code: 'MATH-301' },
+                        { title: 'Applied Physics', code: 'PHY-101' },
+                        { title: 'Economics', code: 'ECON-100' }
+                      ].map((subj) => (
                         <button
                           type="button"
-                          key={subj}
+                          key={subj.title}
                           onClick={() => {
-                            setCourseFormName(subj);
-                            const prefix = subj.split(' ').map(w => w[0]).join('').toUpperCase();
-                            setCourseFormCode(`${prefix}-101`);
+                            setCourseFormName(subj.title);
+                            setCourseFormCode(subj.code);
                           }}
-                          className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-bold transition-all cursor-pointer shadow-2xs"
                         >
-                          {subj}
+                          {subj.title}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Course Code <span className="text-slate-400 font-normal">(e.g. CHEM-202, CS-105)</span>
-                    </label>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-800">
+                        Course Code / Identifier
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-medium">Optional (Auto-generated if blank)</span>
+                    </div>
                     <input
                       type="text"
                       value={courseFormCode}
                       onChange={(e) => setCourseFormCode(e.target.value)}
-                      placeholder="e.g. PHY-101 (Leave empty to auto-generate)"
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-medium"
+                      placeholder="e.g. PHY-101, CS-201"
+                      className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-mono font-semibold text-slate-900 transition-all placeholder:text-slate-400"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Course Overview & Description
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Course Description & Guidelines
                     </label>
                     <textarea
                       rows={3}
                       value={courseFormDesc}
                       onChange={(e) => setCourseFormDesc(e.target.value)}
-                      placeholder="Provide syllabus highlights, prerequisites, or course overview..."
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                      placeholder="Provide syllabus highlights, prerequisites, or lab requirements..."
+                      className="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-xl text-xs font-medium text-slate-900 transition-all placeholder:text-slate-400"
                     />
                   </div>
                 </div>
 
-                {/* Floating Sticky Bottom Action Footer */}
+                {/* Floating Sticky Action Footer */}
                 <div className="p-4 sm:p-5 bg-slate-50/95 backdrop-blur-sm border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsCourseModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5"
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-white min-h-11 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back / Cancel
+                    <ArrowLeft className="w-3.5 h-3.5" /> Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={savingCourse || !courseFormName.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 min-h-11 cursor-pointer"
+                    className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-200 flex items-center gap-1.5 min-h-11 cursor-pointer"
                   >
                     {savingCourse ? (
                       <>

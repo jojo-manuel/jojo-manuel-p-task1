@@ -495,36 +495,37 @@
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 1.25rem 1rem 2rem 1rem;
+  padding: 1.25rem 1rem 2.5rem 1rem;
   overflow-y: auto;
-  animation: fadeIn 0.2s ease-out both;
+  animation: fadeIn 0.18s ease-out both;
 }
 
 .floating-modal-card {
   width: 100%;
   max-width: 38rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   max-height: calc(100vh - 2.5rem);
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(226, 232, 240, 0.7);
   border-radius: 1.5rem;
-  box-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(15, 23, 42, 0.08);
-  animation: modalFloatInTop 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  outline: none;
+  box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.22), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  animation: modalFloatInTop 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
   overflow: hidden;
 }
 
 @keyframes modalFloatInTop {
   from {
     opacity: 0;
-    transform: translateY(-28px) scale(0.97);
+    transform: translateY(-20px) scale(0.98);
   }
   to {
     opacity: 1;
