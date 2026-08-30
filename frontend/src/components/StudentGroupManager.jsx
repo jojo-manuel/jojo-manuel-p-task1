@@ -337,7 +337,10 @@ export default function StudentGroupManager({ user, token, onGroupUpdated }) {
               <Users className="w-4 h-4 text-indigo-600" /> My Groups ({groups.length})
             </h3>
             {loadingGroups ? (
-              <SkeletonList rows={3} />
+              <div className="space-y-3 py-2">
+                <LoadingSpinner size="sm" text="Syncing study groups..." />
+                <SkeletonList rows={3} />
+              </div>
             ) : groups.length === 0 ? (
               <div className="p-6 text-center space-y-2">
                 <Users className="w-8 h-8 text-slate-300 mx-auto" />

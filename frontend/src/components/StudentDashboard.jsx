@@ -241,7 +241,14 @@ export default function StudentDashboard({
             </div>
 
             {loadingAssignments ? (
-              <SkeletonCourses count={3} />
+              <div className="space-y-4">
+                <LoadingSpinner
+                  size="md"
+                  text="Loading your enrolled courses..."
+                  subtext="Fetching syllabus modules and completion progress"
+                />
+                <SkeletonCourses count={3} />
+              </div>
             ) : enrolledCourses.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">

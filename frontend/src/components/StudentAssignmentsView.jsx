@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { PopoverSelect } from './AnchoredPopover';
 import { useToast } from './Toast';
-import { SkeletonCardGrid, ButtonSpinner } from './LoadingSpinner';
+import { SkeletonCardGrid, ButtonSpinner, LoadingSpinner } from './LoadingSpinner';
 
 export default function StudentAssignmentsView({ token, initialCourseFilter = '' }) {
   const { toast } = useToast();
@@ -376,7 +376,14 @@ export default function StudentAssignmentsView({ token, initialCourseFilter = ''
       </div>
 
       {loading ? (
-        <SkeletonCardGrid count={4} />
+        <div className="space-y-6">
+          <LoadingSpinner
+            size="lg"
+            text="Loading coursework & assignments..."
+            subtext="Syncing course deadlines, questions papers & submission records"
+          />
+          <SkeletonCardGrid count={4} />
+        </div>
       ) : displayedAssignments.length === 0 ? (
         <div className="p-12 text-center classic-card rounded-xl bg-white border border-slate-200 space-y-3">
           <FileText className="w-12 h-12 text-slate-300 mx-auto" />
